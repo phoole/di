@@ -87,4 +87,9 @@ trait ExtendedContainerTrait
             throw new NotFoundException("Service $id not found");
         }
     }
+
+    /**
+     * from Container
+     */
+    abstract public function has($id): bool;
 }
