@@ -14,8 +14,9 @@ namespace Phoole\Di;
 use Phoole\Config\Config;
 use Phoole\Config\ConfigInterface;
 use Psr\Container\ContainerInterface;
-use Phoole\Di\Util\ContainerTrait;
 use Phoole\Di\Exception\NotFoundException;
+use Phoole\Di\Util\ExtendedContainerTrait;
+use Phoole\Di\Util\ExtendedContainerInterface;
 use Phoole\Base\Reference\ReferenceInterface;
 
 /**
@@ -23,9 +24,12 @@ use Phoole\Base\Reference\ReferenceInterface;
  *
  * @package Phoole\Di
  */
-class Container implements ContainerInterface, ReferenceInterface
+class Container implements
+    ContainerInterface,
+    ReferenceInterface,
+    ExtendedContainerInterface
 {
-    use ContainerTrait;
+    use ExtendedContainerTrait;
     
     /**
      * Constructor
@@ -48,7 +52,7 @@ class Container implements ContainerInterface, ReferenceInterface
         if ($this->has($id)) {
             return $this->getInstance($id);
         } else {
-            throw new RuntimeException("Service $id not found");
+            throw new NotFoundException("Service $id not found");
         }
     }
 

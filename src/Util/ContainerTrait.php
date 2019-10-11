@@ -13,7 +13,6 @@ namespace Phoole\Di\Util;
 
 use Phoole\Base\Tree\Tree;
 use Phoole\Config\ConfigInterface;
-use Psr\Container\ContainerInterface;
 use Phoole\Di\Exception\RuntimeException;
 use Phoole\Base\Reference\ReferenceTrait;
 
@@ -47,25 +46,6 @@ trait ContainerTrait
     protected $objects = [];
 
     /**
-     * init the container
-     *
-     * @param  ConfigInterface $config
-     * @param  ContainerInterface $delegator
-     * @return void
-     */
-    protected function initContainer(
-        ConfigInterface $config,
-        ContainerInterface $delegator = null
-    ): void {
-        $this->config = $config;
-        $this->delegator = $delegator ?? $this;
-        
-        $settings = &($this->config->getTree())->get('');
-        $this->setReferencePattern('${#', '}');
-        $this->deReference($settings);
-    }
-
-    /**
      * Get the instance
      *
      * @param  string $id
@@ -74,10 +54,28 @@ trait ContainerTrait
     protected function getInstance(string $id): object
     {
         if (!isset($this->objects[$id])) {
-            $def = 'di.service.' . $id;
-            $this->objects[$id] = $this->fabricate($this->config->get($def));
+            $this->objects[$id] = $this->newInstance($id);
         }
         return $this->objects[$id];
+    }
+
+    /**
+     * creaet a new instance
+     *
+     * @param  string $id
+     * @return object
+     */
+    protected function newInstance(string $id, array $args = []): object
+    {
+        $fid = 'di.service.' . $id;
+        $def = $this->config->get($fid);
+
+        if (!empty($args)) {
+            $this->resolve($args);
+            $def['args'] = $args;
+        }
+
+        return $this->fabricate($def);
     }
 
     /**
@@ -99,4 +97,9 @@ trait ContainerTrait
     {
         return $this->delegator->get($name);
     }
+
+    /**
+     * from ExtendedContainerTrait
+     */
+    abstract public function resolve(&$input): void;
 }

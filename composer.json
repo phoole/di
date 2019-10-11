@@ -14,8 +14,7 @@
     "require": {
         "php": ">=7.2.0",
         "psr/container": "^1.0",
-        "phoole/base": "^1.0.10",
-        "phoole/config": "^1.0.7"
+        "phoole/config": "^1.0.8"
     },
     "require-dev": {
         "phpunit/phpunit": "^8"

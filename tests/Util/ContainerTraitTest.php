@@ -77,4 +77,17 @@ class ContainerTraitTest extends TestCase
         $this->assertTrue(is_object($c));
         $this->assertTrue($a === $c->a);
     }
+
+    /**
+     * @covers Phoole\Di\Util\ContainerTrait::getInstance()
+     */
+    public function testGetInstance2()
+    {
+        // check predefined objects
+        $a = $this->invokeMethod('getInstance', ['config']);
+        $this->assertTrue($a instanceof Config);
+
+        $b = $this->invokeMethod('getInstance', ['container']);
+        $this->assertTrue($b instanceof Container);
+    }
 }
