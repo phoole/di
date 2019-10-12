@@ -12,12 +12,24 @@ declare(strict_types=1);
 namespace Phoole\Di;
 
 use Psr\Container\ContainerInterface;
+use Phoole\Di\Exception\RuntimeException;
 use Phoole\Di\Exception\NotFoundException;
 
 /**
  * Service
  *
- * A static service locator build around the container
+ * A static service locator build around the `container`
+ *
+ * ```php
+ * // set the container first
+ * Service::setContainer($container);
+ *
+ * // get shared 'db' service
+ * $db = Service::get('db');
+ *
+ * // get a new 'db' service
+ * $dbNew = Service::get('db@');
+ * ```
  *
  * @package Phoole\Di
  */
@@ -28,12 +40,6 @@ class Service
      * @staticvar
      */
     protected static $container;
-
-    /**
-     * @var  array
-     * @staticvar
-     */
-    protected static $aliases = [];
 
     /**
      * Finalized constructor to prevent instantiation.
@@ -48,31 +54,17 @@ class Service
     /**
      * Locate a service from the container
      *
-     * ```php
-     * // the container
-     * $container = Service::container();
-     *
-     * // db
-     * $db = Service::db();
-     * ```
-     *
-     * @param  string $method the object id actually
-     * @param  array  $params parameters if any
+     * @param  string $id           service id
      * @return object
-     * @throws NotFoundException if container not set or object not found
-     * @throws \RuntimeException if object instantiation error
+     * @throws NotFoundException    if container not set or object not found
+     * @throws RuntimeException     if object instantiation error
      */
-    public static function __callstatic(string $method, array $params): object
+    public static function get(string $id): object
     {
-        if (isset(static::$aliases[$method])) {
-            return static::$aliases[$method];
-        }
-
         if (static::$container) {
-            return static::$container->get($method);
+            return static::$container->get($id);
         }
-        
-        throw new \RuntimeException(__CLASS__ . ": container not set");
+        throw new RuntimeException(__CLASS__ . ": container not set");
     }
 
     /**
@@ -80,30 +72,16 @@ class Service
      *
      * @param  ContainerInterface $container
      * @return void
-     * @throws \RuntimeException if container set already
+     * @throws RuntimeException if container set already
      */
-    public static function setContainer(ContainerInterface $container): void
+    public static function setContainer(ContainerInterface $container = null): void
     {
         if (null === static::$container) {
             static::$container = $container;
+        } elseif (is_null($container)) {
+            static::$container = null;
         } else {
-            throw new \RuntimeException(__CLASS__ . ": container set already");
+            throw new RuntimeException(__CLASS__ . ": container set already");
         }
-    }
-
-    /**
-     * Set alias
-     *
-     * @param  string $id
-     * @param  object $object
-     * @return void
-     * @throws \RuntimeException if exists
-     */
-    public static function set(string $id, object $object): void
-    {
-        if (isset(static::$aliases[$id])) {
-            throw new \RuntimeException("Service $id exists already");
-        }
-        static::$aliases[$id] = $object;
     }
 }

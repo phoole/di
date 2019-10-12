@@ -11,10 +11,11 @@ declare(strict_types=1);
 
 namespace Phoole\Di\Util;
 
-use Phoole\Base\Tree\Tree;
 use Phoole\Config\ConfigInterface;
-use Phoole\Di\Exception\RuntimeException;
+use Psr\Container\ContainerInterface;
 use Phoole\Base\Reference\ReferenceTrait;
+use Phoole\Di\Exception\RuntimeException;
+use Phoole\Di\Exception\NotFoundException;
 
 /**
  * ContainerTrait
@@ -35,6 +36,8 @@ trait ContainerTrait
 
     /**
      * delegator for object lookup
+     *
+     * @var ContainerInterface
      */
     protected $delegator;
 
@@ -43,7 +46,57 @@ trait ContainerTrait
      *
      * @var array
      */
-    protected $objects = [];
+    protected $objects;
+
+    /**
+     * service prefix
+     *
+     * @var string
+     */
+    protected $prefix = 'di.service.';
+
+    /**
+     * common prefix
+     *
+     * @var string
+     */
+    protected $common = 'di.common';
+
+    /**
+     * init the container
+     *
+     * @param  ConfigInterface $config
+     * @param  ContainerInterface $delegator
+     * @return void
+     */
+    protected function initContainer(
+        ConfigInterface $config,
+        ContainerInterface $delegator = null
+    ): void {
+        $this->config = $config;
+        $this->delegator = $delegator ?? $this;
+
+        $this->setReferencePattern('${#', '}');
+        $this->reloadAll();
+    }
+
+    /**
+     * Reload all service definitions
+     *
+     * @return void
+     */
+    protected function reloadAll(): void
+    {
+        $this->objects = [];
+
+        // some predefined objects
+        $this->objects['config'] = $this->config;
+        $this->objects['container'] = $this->delegator;
+
+        // do the job
+        $settings = &($this->config->getTree())->get('');
+        $this->deReference($settings);
+    }
 
     /**
      * Get the instance
@@ -53,6 +106,12 @@ trait ContainerTrait
      */
     protected function getInstance(string $id): object
     {
+        // get new object
+        if ('@' === substr($id, -1)) {
+            return $this->newInstance($id);
+        }
+
+        // check the pool for shared object
         if (!isset($this->objects[$id])) {
             $this->objects[$id] = $this->newInstance($id);
         }
@@ -65,17 +124,12 @@ trait ContainerTrait
      * @param  string $id
      * @return object
      */
-    protected function newInstance(string $id, array $args = []): object
+    protected function newInstance(string $id): object
     {
-        $fid = 'di.service.' . $id;
-        $def = $this->config->get($fid);
-
-        if (!empty($args)) {
-            $this->resolve($args);
-            $def['args'] = $args;
-        }
-
-        return $this->fabricate($def);
+        $def = $this->config->get($this->getRawId($id));
+        $obj = $this->fabricate($def);
+        $this->executeCommon($obj);
+        return $obj;
     }
 
     /**
@@ -86,8 +140,18 @@ trait ContainerTrait
      */
     protected function hasDefinition(string $id): bool
     {
-        $def = 'di.service.' . $id;
-        return $this->config->has($def);
+        return $this->config->has($this->getRawId($id));
+    }
+
+    /**
+     * get the raw id as defined in $config
+     *
+     * @param  string $id
+     * @return string
+     */
+    protected function getRawId(string $id): string
+    {
+        return $this->prefix . explode('@', $id, 2)[0];
     }
 
     /**
@@ -99,7 +163,22 @@ trait ContainerTrait
     }
 
     /**
-     * from ExtendedContainerTrait
+     * execute common methods for newed objects
+     *
+     * @param  object $object
+     * @return void
      */
-    abstract public function resolve(&$input): void;
+    protected function executeCommon(object $object): void
+    {
+        if ($this->config->has($this->common)) {
+            $args = [ $object ];
+            foreach ($this->config->get($this->common) as $pair) {
+                $tester = $pair[0]; // test function
+                $runner = $pair[1]; // callable with $object as arguments
+                if ($tester($object, $this)) {
+                    $this->executeCallable($runner, $args);
+                }
+            }
+        }
+    }
 }

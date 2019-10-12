@@ -11,12 +11,10 @@ declare(strict_types=1);
 
 namespace Phoole\Di;
 
-use Phoole\Config\Config;
 use Phoole\Config\ConfigInterface;
 use Psr\Container\ContainerInterface;
+use Phoole\Di\Util\ContainerTrait;
 use Phoole\Di\Exception\NotFoundException;
-use Phoole\Di\Util\ExtendedContainerTrait;
-use Phoole\Di\Util\ExtendedContainerInterface;
 use Phoole\Base\Reference\ReferenceInterface;
 
 /**
@@ -24,15 +22,15 @@ use Phoole\Base\Reference\ReferenceInterface;
  *
  * @package Phoole\Di
  */
-class Container implements
-    ContainerInterface,
-    ReferenceInterface,
-    ExtendedContainerInterface
+class Container implements ContainerInterface, ReferenceInterface
 {
-    use ExtendedContainerTrait;
+    use ContainerTrait;
     
     /**
      * Constructor
+     *
+     * $config    is the Phoole\Config\Config object
+     * $delegator is for lookup delegation. If NULL will use $this
      *
      * @param  ConfigInterface $config
      * @param  ContainerInterface $delegator
@@ -45,6 +43,18 @@ class Container implements
     }
 
     /**
+     *
+     * ```php
+     * // get the cache object
+     * $cache = $container->get('cache');
+     *
+     * // get a NEW cache object
+     * $cacheNew = $container->get('cache@');
+     *
+     * // get an object shared in SESSION scope
+     * $sessCache = $container->get('cache@SESSION');
+     * ```
+     *
      * {@inheritDoc}
      */
     public function get($id): object

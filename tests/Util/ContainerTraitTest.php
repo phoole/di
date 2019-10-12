@@ -66,13 +66,49 @@ class ContainerTraitTest extends TestCase
     }
 
     /**
+     * @covers Phoole\Di\Util\ContainerTrait::getRawId()
+     */
+    public function testGetRawId()
+    {
+        $g = 'di.service.cache';
+        $this->assertEquals($g, $this->invokeMethod('getRawId', ['cache@']));
+        $this->assertEquals($g, $this->invokeMethod('getRawId', ['cache@SS']));
+    }
+
+    /**
+     * @covers Phoole\Di\Util\ContainerTrait::newInstance()
+     */
+    public function testNewInstance()
+    {
+        $a = $this->invokeMethod('newInstance', ['a@SESS']);
+        $b = $this->invokeMethod('newInstance', ['a']);
+        $this->assertTrue(is_object($a));
+        $this->assertTrue(is_object($b));
+        $this->assertFalse($a === $b);
+    }
+
+    /**
      * @covers Phoole\Di\Util\ContainerTrait::getInstance()
      */
     public function testGetInstance()
     {
+        // get shared object
         $a = $this->invokeMethod('getInstance', ['a']);
+        $b = $this->invokeMethod('getInstance', ['a']);
         $this->assertTrue(is_object($a));
+        $this->assertTrue($a === $b);
 
+        // get new object
+        $x = $this->invokeMethod('getInstance', ['a@']);
+        $y = $this->invokeMethod('getInstance', ['a@']);
+        $this->assertFalse($x === $y);
+
+        // same scope object
+        $x = $this->invokeMethod('getInstance', ['a@XX']);
+        $y = $this->invokeMethod('getInstance', ['a@XX']);
+        $this->assertTrue($x === $y);
+
+        // using shared object
         $c = $this->invokeMethod('getInstance', ['c']);
         $this->assertTrue(is_object($c));
         $this->assertTrue($a === $c->a);
@@ -89,5 +125,19 @@ class ContainerTraitTest extends TestCase
 
         $b = $this->invokeMethod('getInstance', ['container']);
         $this->assertTrue($b instanceof Container);
+    }
+
+        /**
+     * @covers Phoole\Di\Util\ContainerTrait::reloadAll()
+     */
+    public function testReloadAll()
+    {
+        $a = $this->invokeMethod('getInstance', ['a']);
+        $b = $this->invokeMethod('getInstance', ['a']);
+        $this->assertTrue($a === $b);
+
+        $this->invokeMethod('reloadAll');
+        $c = $this->invokeMethod('getInstance', ['a']);
+        $this->assertFalse($a === $c);
     }
 }
