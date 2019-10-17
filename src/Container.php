@@ -39,7 +39,11 @@ class Container implements ContainerInterface, ReferenceInterface
         ConfigInterface $config,
         ContainerInterface $delegator = null
     ) {
-        $this->initContainer($config, $delegator);
+        $this->config = $config;
+        $this->delegator = $delegator ?? $this;
+
+        $this->setReferencePattern('${#', '}');
+        $this->reloadAll();
     }
 
     /**

@@ -14,8 +14,6 @@ namespace Phoole\Di\Util;
 use Phoole\Config\ConfigInterface;
 use Psr\Container\ContainerInterface;
 use Phoole\Base\Reference\ReferenceTrait;
-use Phoole\Di\Exception\RuntimeException;
-use Phoole\Di\Exception\NotFoundException;
 
 /**
  * ContainerTrait
@@ -61,24 +59,6 @@ trait ContainerTrait
      * @var string
      */
     protected $common = 'di.common';
-
-    /**
-     * init the container
-     *
-     * @param  ConfigInterface $config
-     * @param  ContainerInterface $delegator
-     * @return void
-     */
-    protected function initContainer(
-        ConfigInterface $config,
-        ContainerInterface $delegator = null
-    ): void {
-        $this->config = $config;
-        $this->delegator = $delegator ?? $this;
-
-        $this->setReferencePattern('${#', '}');
-        $this->reloadAll();
-    }
 
     /**
      * Reload all service definitions

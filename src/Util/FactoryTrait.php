@@ -23,7 +23,7 @@ trait FactoryTrait
     /**
      * fabricate the object using the definition
      *
-     * @param  object|array $definition
+     * @param  string|object|array $definition
      * @throws LogicException if something goes wrong
      * @return object
      */
@@ -48,7 +48,7 @@ trait FactoryTrait
     /**
      * fix object definition
      *
-     * @param  string|array $definition
+     * @param  string|object|array $definition
      * @return array
      */
     protected function fixDefinition($definition): array
@@ -134,7 +134,6 @@ trait FactoryTrait
      */
     protected function fixMethod(object $object, array $line): array
     {
-        $callable = null;
         if (is_string($line[0]) && method_exists($object, $line[0])) {
             $callable = [$object, $line[0]];
         } elseif (is_callable($line[0])) {
