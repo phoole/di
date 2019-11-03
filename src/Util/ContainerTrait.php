@@ -7,7 +7,7 @@
  * @package   Phoole\Di
  * @copyright Copyright (c) 2019 Hong Zhang
  */
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace Phoole\Di\Util;
 
@@ -24,7 +24,7 @@ trait ContainerTrait
 {
     use FactoryTrait;
     use ReferenceTrait;
-    
+
     /**
      * for configuration lookup
      *
@@ -47,7 +47,7 @@ trait ContainerTrait
     protected $objects;
 
     /**
-     * service prefix
+     * service definition prefix
      *
      * @var string
      */
@@ -113,17 +113,6 @@ trait ContainerTrait
     }
 
     /**
-     * Try find a service in the definition
-     *
-     * @param  string $id
-     * @return bool
-     */
-    protected function hasDefinition(string $id): bool
-    {
-        return $this->config->has($this->getRawId($id));
-    }
-
-    /**
      * get the raw id as defined in $config
      *
      * @param  string $id
@@ -135,14 +124,6 @@ trait ContainerTrait
     }
 
     /**
-     * {@inheritDoc}
-     */
-    protected function getReference(string $name)
-    {
-        return $this->delegator->get($name);
-    }
-
-    /**
      * execute common methods for newed objects
      *
      * @param  object $object
@@ -151,14 +132,29 @@ trait ContainerTrait
     protected function executeCommon(object $object): void
     {
         if ($this->config->has($this->common)) {
-            $args = [ $object ];
-            foreach ($this->config->get($this->common) as $pair) {
-                $tester = $pair[0]; // test function
-                $runner = $pair[1]; // callable with $object as arguments
-                if ($tester($object, $this)) {
-                    $this->executeCallable($runner, $args);
-                }
+            foreach ($this->config->get($this->common) as $line) {
+                list($runner, $arguments) = $this->fixMethod($object, (array) $line);
+                $this->executeCallable($runner, $arguments);
             }
         }
+    }
+
+    /**
+     * Try find a service in the definition
+     *
+     * @param  string $id
+     * @return bool
+     */
+    protected function hasDefinition(string $id): bool
+    {
+        return $this->config->has($this->getRawId($id));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function getReference(string $name)
+    {
+        return $this->delegator->get($name);
     }
 }

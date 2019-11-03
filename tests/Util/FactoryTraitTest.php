@@ -1,11 +1,11 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace Phoole\Tests\Util;
 
-use Phoole\Di\Util\FactoryTrait;
 use PHPUnit\Framework\TestCase;
+use Phoole\Di\Util\FactoryTrait;
 
 class Factory
 {
@@ -30,27 +30,8 @@ class ClassHasConstructor
 class FactoryTraitTest extends TestCase
 {
     private $obj;
+
     private $ref;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->obj = new Factory();
-        $this->ref = new \ReflectionClass(get_class($this->obj));
-    }
-
-    protected function tearDown(): void
-    {
-        $this->obj = $this->ref = null;
-        parent::tearDown();
-    }
-
-    protected function invokeMethod($methodName, array $parameters = array())
-    {
-        $method = $this->ref->getMethod($methodName);
-        $method->setAccessible(true);
-        return $method->invokeArgs($this->obj, $parameters);
-    }
 
     /**
      * @covers Phoole\Di\Util\FactoryTrait::fixDefinition()
@@ -64,7 +45,7 @@ class FactoryTraitTest extends TestCase
         );
 
         // passthru
-        $data = [ 'class' => 'Test', 'args' => ['bingo']];
+        $data = ['class' => 'Test', 'args' => ['bingo']];
         $this->assertEquals(
             $data,
             $this->invokeMethod('fixDefinition', [$data])
@@ -81,14 +62,21 @@ class FactoryTraitTest extends TestCase
         );
     }
 
+    protected function invokeMethod($methodName, array $parameters = array())
+    {
+        $method = $this->ref->getMethod($methodName);
+        $method->setAccessible(TRUE);
+        return $method->invokeArgs($this->obj, $parameters);
+    }
+
     /**
      * @covers Phoole\Di\Util\FactoryTrait::constructObject()
      */
     public function testConstructObject()
     {
-        $noc  = __NAMESPACE__ . '\\ClassNoContructor';
+        $noc = __NAMESPACE__ . '\\ClassNoContructor';
         $arg1 = [];
-        $has  = __NAMESPACE__ . '\\ClassHasConstructor';
+        $has = __NAMESPACE__ . '\\ClassHasConstructor';
         $arg2 = ['bingo'];
 
         $this->assertTrue(is_object($this->invokeMethod('constructObject', [$noc, $arg1])));
@@ -112,21 +100,21 @@ class FactoryTraitTest extends TestCase
         $this->assertTrue($a === $this->invokeMethod('executeCallable', [$a, []]));
 
         // array callable
-        $a = [new ClassNoContructor(), 'get' ];
+        $a = [new ClassNoContructor(), 'get'];
         $this->assertEquals('a', $this->invokeMethod('executeCallable', [$a, []]));
 
         // exception
         $this->expectExceptionMessage('not a callable');
         $this->assertEquals('a', $this->invokeMethod('executeCallable', ['bingo', []]));
     }
-    
+
     /**
      * @covers Phoole\Di\Util\FactoryTrait::fixMethod()
      */
     public function testFixMethod()
     {
         // object's method
-        $obj  = new ClassNoContructor();
+        $obj = new ClassNoContructor();
         $line = 'get';
         list($callable, $args) = $this->invokeMethod('fixMethod', [$obj, [$line]]);
         $this->assertTrue(is_object($callable[0]));
@@ -154,9 +142,9 @@ class FactoryTraitTest extends TestCase
             ]
         ];
         $this->invokeMethod('afterConstruct', [new ClassNoContructor(), $def]);
-        $this->assertTrue(true);
+        $this->assertTrue(TRUE);
     }
-    
+
     /**
      * @covers Phoole\Di\Util\FactoryTrait::fabricate()
      */
@@ -178,5 +166,18 @@ class FactoryTraitTest extends TestCase
             get_class($this->invokeMethod('fabricate', [$c])),
             $c
         );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->obj = new Factory();
+        $this->ref = new \ReflectionClass(get_class($this->obj));
+    }
+
+    protected function tearDown(): void
+    {
+        $this->obj = $this->ref = NULL;
+        parent::tearDown();
     }
 }

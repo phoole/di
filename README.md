@@ -58,10 +58,7 @@ Usage
 
       // common methods to run after each object creation
       'di.common' => [
-          [
-            function($obj) { return $obj instanceof \MyCacheDriver; }, // tester
-            function($obj, $container) { echo "ok"; } // runner
-          ],
+          function($obj, $container) { echo "ok"; },
       ]
   ];
 
@@ -101,7 +98,7 @@ Features
     a service instance in the container.
 
     **Two reserved service references are '${#container}' and '${#config}'**.
-    These two are refering the container instance itself and the config instance
+    These two are referring the container instance itself and the config instance
     it is using. These two can be used just like other service references.
 
   - Using references
@@ -115,7 +112,7 @@ Features
     ]];
     ```
 
-- <a name="decorate"></a>**Object decorating**
+- <a id="decorate"></a>**Object decorating**
 
   *Object decorating* is to apply decorating changes (executing methods etc.)
   right after the instantiation of a service instance.
@@ -146,7 +143,7 @@ Features
 
     - a valid callable
 
-    - a psedudo callable with references (after resolving the references, it is
+    - a pseudo callable with references (after resolving the references, it is
       a valid callable).
 
     `OptionalArgumentArray` here can be,
@@ -161,14 +158,7 @@ Features
     $configData = [
         // common methods for all instances
         'di.common' => [
-            // [ tester(): bool, method ]
-            [
-                function($object, $container) {
-                    return $object instanceof 'Psr\\Log\\LoggerAwareInterface'
-                },
-                ['setLogger', ['${#logger}']]
-            ],
-            // ...
+            ['setLogger', ['${#logger}']]
         ],
     ];
     ```
@@ -179,7 +169,7 @@ Features
     container as parameters and returns a boolean value. The second part is in
     the same method format as in the service definition 'after'.
 
-- <a name="scope"></a>**Object scope**
+- <a id="scope"></a>**Object scope**
 
   - Shared or single scope
 
@@ -213,7 +203,7 @@ Features
 
     ```php
     // no scope
-    $cache1 = $container->get('cache@myScope');
+    $cache1 = $container->get('cache');
 
     // in `myScope`
     $cache2 = $container->get('cache@myScope');
@@ -257,7 +247,7 @@ Dependencies
 
 - PHP >= 7.2.0
 
-- phoole/config >= 1.0.8
+- phoole/config >= 1.*
 
 License
 ---

@@ -7,13 +7,14 @@
  * @package   Phoole\Di
  * @copyright Copyright (c) 2019 Hong Zhang
  */
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace Phoole\Di;
 
 use Phoole\Config\ConfigInterface;
-use Psr\Container\ContainerInterface;
 use Phoole\Di\Util\ContainerTrait;
+use Psr\Container\ContainerInterface;
+use Phoole\Di\Exception\LogicException;
 use Phoole\Di\Exception\NotFoundException;
 use Phoole\Base\Reference\ReferenceInterface;
 
@@ -25,25 +26,54 @@ use Phoole\Base\Reference\ReferenceInterface;
 class Container implements ContainerInterface, ReferenceInterface
 {
     use ContainerTrait;
-    
+
+    /**
+     * @var
+     */
+    protected static $container;
+
     /**
      * Constructor
      *
      * $config    is the Phoole\Config\Config object
      * $delegator is for lookup delegation. If NULL will use $this
      *
-     * @param  ConfigInterface $config
+     * @param  ConfigInterface    $config
      * @param  ContainerInterface $delegator
      */
     public function __construct(
         ConfigInterface $config,
-        ContainerInterface $delegator = null
+        ?ContainerInterface $delegator = NULL
     ) {
         $this->config = $config;
         $this->delegator = $delegator ?? $this;
 
         $this->setReferencePattern('${#', '}');
         $this->reloadAll();
+
+        self::$container = $this;
+    }
+
+    /**
+     * Access objects from a static way
+     *
+     * @param  string $name
+     * @param  array  $arguments
+     * @return object
+     * @throws LogicException
+     */
+    public static function __callStatic($name, $arguments): object
+    {
+        $container = self::$container;
+        if (is_null($container)) {
+            throw new LogicException("unInitialized container");
+        }
+
+        $object = $container->get($name);
+        if (!empty($arguments) && is_callable($object)) {
+            return $object($arguments);
+        }
+        return $object;
     }
 
     /**

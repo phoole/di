@@ -7,10 +7,11 @@
  * @package   Phoole\Di
  * @copyright Copyright (c) 2019 Hong Zhang
  */
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace Phoole\Di\Util;
 
+use ReflectionClass;
 use Phoole\Di\Exception\LogicException;
 
 /**
@@ -24,8 +25,8 @@ trait FactoryTrait
      * fabricate the object using the definition
      *
      * @param  string|object|array $definition
-     * @throws LogicException if something goes wrong
      * @return object
+     * @throws LogicException if something goes wrong
      */
     protected function fabricate($definition): object
     {
@@ -38,13 +39,13 @@ trait FactoryTrait
         } else {
             $obj = $this->executeCallable($def['class'], $def['args']);
         }
-        
+
         // aftermath
         $this->afterConstruct($obj, $def);
 
         return $obj;
     }
-    
+
     /**
      * fix object definition
      *
@@ -67,17 +68,17 @@ trait FactoryTrait
     /**
      * Instantiate service object
      *
-     * @param  string $class        class name
-     * @param  array $arguments     constructor arguments
-     * @throws LogicException       if something goes wrong
+     * @param  string $class      class name
+     * @param  array  $arguments  constructor arguments
      * @return object
+     * @throws LogicException       if something goes wrong
+     * @throws \ReflectionException if reflection goes wrong
      */
     protected function constructObject(string $class, array $arguments): object
     {
-        $reflector = new \ReflectionClass($class);
-        $constructor = $reflector->getConstructor();
-
         try {
+            $reflector = new ReflectionClass($class);
+            $constructor = $reflector->getConstructor();
             if (is_null($constructor)) {
                 return $reflector->newInstanceWithoutConstructor();
             } else {
@@ -91,10 +92,10 @@ trait FactoryTrait
     /**
      * execute callable
      *
-     * @param  callable|object $callable      callable
-     * @param  array $arguments     constructor arguments
-     * @throws LogicException       if something goes wrong
+     * @param  callable|object $callable   callable
+     * @param  array           $arguments  constructor arguments
      * @return mixed
+     * @throws LogicException       if something goes wrong
      */
     protected function executeCallable($callable, array $arguments)
     {
@@ -129,8 +130,8 @@ trait FactoryTrait
      *
      * @param  object $object
      * @param  array  $line
-     * @throws LogicException   if goes wrong
      * @return array  [Callable, arguments]
+     * @throws LogicException   if goes wrong
      */
     protected function fixMethod(object $object, array $line): array
     {

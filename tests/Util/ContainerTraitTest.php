@@ -1,60 +1,42 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace Phoole\Tests\Util;
 
 use Phoole\Di\Container;
 use Phoole\Config\Config;
-use Phoole\Di\Util\ContainerTrait;
 use PHPUnit\Framework\TestCase;
 
-class A {};
-class B {};
-class C {
+class A
+{
+}
+
+;
+
+class B
+{
+}
+
+;
+
+class C
+{
     public $a;
-    public function __construct(A $a) {
+
+    public function __construct(A $a)
+    {
         $this->a = $a;
     }
-};
+}
+
+;
 
 class ContainerTraitTest extends TestCase
 {
     private $obj;
+
     private $ref;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->obj = new Container(new Config([
-            'name.a' => A::class,
-            'di.service' => [
-                'a' => '${name.a}',
-                'b' => [
-                    'class' => B::class,
-                    'args'  => [],
-                ],
-                'c' => [
-                    'class' => C::class,
-                    'args'  => ['${#a}']
-                ],
-            ]
-        ]));
-        $this->ref = new \ReflectionClass(get_class($this->obj));
-    }
-
-    protected function tearDown(): void
-    {
-        $this->obj = $this->ref = null;
-        parent::tearDown();
-    }
-
-    protected function invokeMethod($methodName, array $parameters = array())
-    {
-        $method = $this->ref->getMethod($methodName);
-        $method->setAccessible(true);
-        return $method->invokeArgs($this->obj, $parameters);
-    }
 
     /**
      * @covers Phoole\Di\Util\ContainerTrait::hasDefinition()
@@ -63,6 +45,13 @@ class ContainerTraitTest extends TestCase
     {
         $this->assertTrue($this->invokeMethod('hasDefinition', ['a']));
         $this->assertFalse($this->invokeMethod('hasDefinition', ['x']));
+    }
+
+    protected function invokeMethod($methodName, array $parameters = array())
+    {
+        $method = $this->ref->getMethod($methodName);
+        $method->setAccessible(TRUE);
+        return $method->invokeArgs($this->obj, $parameters);
     }
 
     /**
@@ -127,7 +116,7 @@ class ContainerTraitTest extends TestCase
         $this->assertTrue($b instanceof Container);
     }
 
-        /**
+    /**
      * @covers Phoole\Di\Util\ContainerTrait::reloadAll()
      */
     public function testReloadAll()
@@ -139,5 +128,35 @@ class ContainerTraitTest extends TestCase
         $this->invokeMethod('reloadAll');
         $c = $this->invokeMethod('getInstance', ['a']);
         $this->assertFalse($a === $c);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->obj = new Container(
+            new Config(
+                [
+                    'name.a' => A::class,
+                    'di.service' => [
+                        'a' => '${name.a}',
+                        'b' => [
+                            'class' => B::class,
+                            'args' => [],
+                        ],
+                        'c' => [
+                            'class' => C::class,
+                            'args' => ['${#a}']
+                        ],
+                    ]
+                ]
+            )
+        );
+        $this->ref = new \ReflectionClass(get_class($this->obj));
+    }
+
+    protected function tearDown(): void
+    {
+        $this->obj = $this->ref = NULL;
+        parent::tearDown();
     }
 }
