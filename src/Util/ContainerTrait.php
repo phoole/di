@@ -7,11 +7,11 @@
  * @package   Phoole\Di
  * @copyright Copyright (c) 2019 Hong Zhang
  */
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Phoole\Di\Util;
 
-use Phoole\Config\ConfigInterface;
+use Phoole\Config\ConfigAwareTrait;
 use Psr\Container\ContainerInterface;
 use Phoole\Base\Reference\ReferenceTrait;
 
@@ -24,13 +24,7 @@ trait ContainerTrait
 {
     use FactoryTrait;
     use ReferenceTrait;
-
-    /**
-     * for configuration lookup
-     *
-     * @var ConfigInterface
-     */
-    protected $config;
+    use ConfigAwareTrait;
 
     /**
      * delegator for object lookup
@@ -45,6 +39,11 @@ trait ContainerTrait
      * @var array
      */
     protected $objects;
+
+    /**
+     * @var string[]
+     */
+    protected $classNames = [];
 
     /**
      * service definition prefix
@@ -70,11 +69,11 @@ trait ContainerTrait
         $this->objects = [];
 
         // some predefined objects
-        $this->objects['config'] = $this->config;
+        $this->objects['config'] = $this->getConfig();
         $this->objects['container'] = $this->delegator;
 
         // do the job
-        $settings = &($this->config->getTree())->get('');
+        $settings = &($this->getConfig()->getTree())->get('');
         $this->deReference($settings);
     }
 
@@ -93,8 +92,11 @@ trait ContainerTrait
 
         // check the pool for shared object
         if (!isset($this->objects[$id])) {
-            $this->objects[$id] = $this->newInstance($id);
+            $object = $this->newInstance($id);
+            $this->objects[$id] = $object;
+            $this->classNames[get_class($object)] = $object;
         }
+
         return $this->objects[$id];
     }
 
@@ -106,7 +108,7 @@ trait ContainerTrait
      */
     protected function newInstance(string $id): object
     {
-        $def = $this->config->get($this->getRawId($id));
+        $def = $this->getConfig()->get($this->getRawId($id));
         $obj = $this->fabricate($def);
         $this->executeCommon($obj);
         return $obj;
@@ -131,8 +133,8 @@ trait ContainerTrait
      */
     protected function executeCommon(object $object): void
     {
-        if ($this->config->has($this->common)) {
-            foreach ($this->config->get($this->common) as $line) {
+        if ($this->getConfig()->has($this->common)) {
+            foreach ($this->getConfig()->get($this->common) as $line) {
                 list($runner, $arguments) = $this->fixMethod($object, (array) $line);
                 $this->executeCallable($runner, $arguments);
             }
@@ -147,7 +149,21 @@ trait ContainerTrait
      */
     protected function hasDefinition(string $id): bool
     {
-        return $this->config->has($this->getRawId($id));
+        return $this->getConfig()->has($this->getRawId($id));
+    }
+
+    /**
+     * @param  string $className
+     * @return object|null
+     */
+    protected function matchClass(string $className): ?object
+    {
+        foreach ($this->classNames as $class => $object) {
+            if (is_a($className, $class, TRUE)) {
+                return $object;
+            }
+        }
+        return NULL;
     }
 
     /**

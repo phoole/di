@@ -7,7 +7,7 @@
  * @package   Phoole\Di
  * @copyright Copyright (c) 2019 Hong Zhang
  */
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Phoole\Di;
 
@@ -15,6 +15,7 @@ use Phoole\Config\ConfigInterface;
 use Phoole\Di\Util\ContainerTrait;
 use Psr\Container\ContainerInterface;
 use Phoole\Di\Exception\LogicException;
+use Phoole\Config\ConfigAwareInterface;
 use Phoole\Di\Exception\NotFoundException;
 use Phoole\Base\Reference\ReferenceInterface;
 
@@ -23,7 +24,7 @@ use Phoole\Base\Reference\ReferenceInterface;
  *
  * @package Phoole\Di
  */
-class Container implements ContainerInterface, ReferenceInterface
+class Container implements ContainerInterface, ReferenceInterface, ConfigAwareInterface
 {
     use ContainerTrait;
 
@@ -45,7 +46,7 @@ class Container implements ContainerInterface, ReferenceInterface
         ConfigInterface $config,
         ?ContainerInterface $delegator = NULL
     ) {
-        $this->config = $config;
+        $this->setConfig($config);
         $this->delegator = $delegator ?? $this;
 
         $this->setReferencePattern('${#', '}');
@@ -93,11 +94,18 @@ class Container implements ContainerInterface, ReferenceInterface
      */
     public function get($id): object
     {
-        if ($this->has($id)) {
+        // defined
+        if ($this->hasDefinition($id)) {
             return $this->getInstance($id);
-        } else {
-            throw new NotFoundException("Service $id not found");
         }
+
+        // matching a classname
+        $object = $this->matchClass($id);
+        if (is_object($object)) {
+            return $object;
+        }
+
+        throw new NotFoundException("Service $id not found");
     }
 
     /**
@@ -105,6 +113,10 @@ class Container implements ContainerInterface, ReferenceInterface
      */
     public function has($id): bool
     {
-        return $this->hasDefinition($id);
+        if ($this->hasDefinition($id) || is_object($this->matchClass($id))) {
+            return TRUE;
+        } else {
+            return FALSE;
+        }
     }
 }

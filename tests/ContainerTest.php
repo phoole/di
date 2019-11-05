@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Phoole\Tests;
 
@@ -38,6 +38,43 @@ class ContainerTest extends TestCase
 
     private $ref;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->obj = new Container(
+            new Config(
+                [
+                    'name.a' => A::class,
+                    'di.service' => [
+                        'a' => '${name.a}',
+                        'b' => [
+                            'class' => B::class,
+                            'args' => [],
+                        ],
+                        'c' => [
+                            'class' => C::class,
+                            'args' => ['${#a}']
+                        ],
+                    ]
+                ]
+            )
+        );
+        $this->ref = new \ReflectionClass(get_class($this->obj));
+    }
+
+    protected function tearDown(): void
+    {
+        $this->obj = $this->ref = NULL;
+        parent::tearDown();
+    }
+
+    protected function invokeMethod($methodName, array $parameters = array())
+    {
+        $method = $this->ref->getMethod($methodName);
+        $method->setAccessible(TRUE);
+        return $method->invokeArgs($this->obj, $parameters);
+    }
+
     /**
      * @covers Phoole\Di\Container::has()
      */
@@ -74,48 +111,11 @@ class ContainerTest extends TestCase
     }
 
     /**
-     * @covers Phoole\Di\Container::_callStatic()
+     * @covers \Phoole\Di\Container::_callStatic()
      */
     public function testCallStatic()
     {
         $a = Container::a();
         $this->assertTrue($a instanceof A);
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->obj = new Container(
-            new Config(
-                [
-                    'name.a' => A::class,
-                    'di.service' => [
-                        'a' => '${name.a}',
-                        'b' => [
-                            'class' => B::class,
-                            'args' => [],
-                        ],
-                        'c' => [
-                            'class' => C::class,
-                            'args' => ['${#a}']
-                        ],
-                    ]
-                ]
-            )
-        );
-        $this->ref = new \ReflectionClass(get_class($this->obj));
-    }
-
-    protected function tearDown(): void
-    {
-        $this->obj = $this->ref = NULL;
-        parent::tearDown();
-    }
-
-    protected function invokeMethod($methodName, array $parameters = array())
-    {
-        $method = $this->ref->getMethod($methodName);
-        $method->setAccessible(TRUE);
-        return $method->invokeArgs($this->obj, $parameters);
     }
 }

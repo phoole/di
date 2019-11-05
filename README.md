@@ -24,7 +24,7 @@ Installation
 Install via the `composer` utility.
 
 ```
-composer require "phoole/di=1.*"
+composer require "phoole/di"
 ```
 
 or add the following lines to your `composer.json`
@@ -52,7 +52,7 @@ Usage
           // cache service
           'cache'  => ['class' => 'MyCache', 'args' => ['${#driver}']],
 
-          // cache driver, classname directly
+          // cache driver, may use classname directly
           'driver' => 'MyCacheDriver',
       ],
 
@@ -87,17 +87,17 @@ Features
   Characters of `'#', '@'` have special meanings, such that should not be part
   of *normal* service names.
 
-  - <a name="pref"></a>Parameter references
+  - <a name="pref"></a>Parameter references `${system.tempdir}`
 
     See [phoole/config reference](https://github.com/phoole/config#ref) for
     detail. Parameter references are read from configuration files or array.
 
-  - <a name="sref"></a>Service references
+  - <a name="sref"></a>Service references `${#cache}`
 
-    Service reference in the form of '${#serviceId}' can be used to referring
+    Service reference in the form of `${#serviceId}` can be used to referring
     a service instance in the container.
 
-    **Two reserved service references are '${#container}' and '${#config}'**.
+    Two reserved service references are `${#container}` and `${#config}`.
     These two are referring the container instance itself and the config instance
     it is using. These two can be used just like other service references.
 
@@ -112,30 +112,32 @@ Features
     ]];
     ```
 
-- <a id="decorate"></a>**Object decorating**
+- <a name="decorate"></a>**Object decorating**
 
   *Object decorating* is to apply decorating changes (executing methods etc.)
-  right after the instantiation of a service instance.
+  right before or after the instantiation of a service instance.
 
   - Decorating methods for *individual instance* only
 
     ```php
     $container->set('cache', [
-        'class'   => 'Phoole\\Cache\\Cache',
-        'args'    => ['${#cachedriver}'], // constructor arguments
-        'after' => [
-            ['clearCache'], // method of $cache
-            ['setLogger', ['${#logger}']], // method with arguments
-            [[$logger, 'setLabel'], ['cache_label']], // callable with arguments
-            [['${#driver}, 'init']], // pseduo callable
+        'class'  => '${cache.class}',
+        'args'   => ['${#cachedriver}'], // constructor arguments
+        'before' => [
+            [['${#logger}', 'info'], ['before creating cache']], // $logger->info(...)
+        ],
+        'after'  => [
+            'clearCache', // $cache->clearCache() method
+            ['setLogger', ['${#logger}']], // $cache->setLogger($logger)
+            [['${#logger}', 'setLabel'], ['cache_label']], // $logger->setLabel('cache_label')
             // ...
         ],
     ]);
     ```
 
-    By adding `after` section into the `cache` service definition in the
-    form of `[ callableOrMethodName, OptionalArgumentArray ]`, these methods
-    will be executed right after `cache` instantiation.
+    By adding `before` or `after` section into the `cache` service definition in the
+    form of `[callableOrMethodName, OptionalArgumentArray]`, these methods will be 
+    executed right before/after `cache` instantiation.
 
     `callableOrMethodName` here can be,
 
@@ -156,9 +158,13 @@ Features
 
     ```php
     $configData = [
-        // common methods for all instances
-        'di.common' => [
-            ['setLogger', ['${#logger}']]
+        // before instances created
+        'di.before' => [
+            [['${#logger}', 'info'], ['before create']],
+        ],
+        // after methods for all instances
+        'di.after' => [
+            ['setLogger', ['${#logger}']], // $obj->setLogger($logger)
         ],
     ];
     ```
@@ -169,7 +175,7 @@ Features
     container as parameters and returns a boolean value. The second part is in
     the same method format as in the service definition 'after'.
 
-- <a id="scope"></a>**Object scope**
+- <a name="scope"></a>**Object scope**
 
   - Shared or single scope
 
@@ -187,7 +193,7 @@ Features
     // same
     var_dump($cache1 === $cache2); // true
 
-    // a new cache instance
+    // get a new cache instance
     $cache3 = $container->get('cache@');
 
     // different instances
@@ -224,6 +230,20 @@ Features
         'args'  => ['${#driver@myScope}'] // use driver of myScope
     ]);
     ```
+  - static or `FACADE` access
+  
+    Objects in the container can also be access through a static way. Couple of 
+    names are reserved. e.g. `get` and `has`. Also couple of predefined objects
+    are `config` and `container`.
+    
+    ```php
+    // equals to $cache = $container->get('cache')
+    $cache = Container::cache();
+    
+    // if __invoke() defined in object
+    $obj = Container::myservice('test');
+    ``` 
+    
 APIs
 ---
 
@@ -233,7 +253,7 @@ APIs
 
   - `has(string $id): bool` from *ContainerInterface*
 
-    `$id` may have '@scope' appended.
+    `$id` may have `@` or `@scope` appended.
 
 Testing
 ---
