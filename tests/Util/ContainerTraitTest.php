@@ -32,11 +32,52 @@ class C
 
 ;
 
+class D
+{
+}
+
 class ContainerTraitTest extends TestCase
 {
     private $obj;
 
     private $ref;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->obj = new Container(
+            new Config(
+                [
+                    'name.a' => A::class,
+                    'di.service' => [
+                        'a' => '${name.a}',
+                        'b' => [
+                            'class' => B::class,
+                            'args' => [],
+                        ],
+                        'c' => [
+                            'class' => C::class,
+                            //'args' => ['${#a}']
+                        ],
+                    ]
+                ]
+            )
+        );
+        $this->ref = new \ReflectionClass(get_class($this->obj));
+    }
+
+    protected function tearDown(): void
+    {
+        $this->obj = $this->ref = NULL;
+        parent::tearDown();
+    }
+
+    protected function invokeMethod($methodName, array $parameters = array())
+    {
+        $method = $this->ref->getMethod($methodName);
+        $method->setAccessible(TRUE);
+        return $method->invokeArgs($this->obj, $parameters);
+    }
 
     /**
      * @covers Phoole\Di\Util\ContainerTrait::hasDefinition()
@@ -45,13 +86,8 @@ class ContainerTraitTest extends TestCase
     {
         $this->assertTrue($this->invokeMethod('hasDefinition', ['a']));
         $this->assertFalse($this->invokeMethod('hasDefinition', ['x']));
-    }
-
-    protected function invokeMethod($methodName, array $parameters = array())
-    {
-        $method = $this->ref->getMethod($methodName);
-        $method->setAccessible(TRUE);
-        return $method->invokeArgs($this->obj, $parameters);
+        $this->assertTrue($this->invokeMethod('hasDefinition', ['config']));
+        $this->assertTrue($this->invokeMethod('hasDefinition', ['container']));
     }
 
     /**
@@ -69,8 +105,9 @@ class ContainerTraitTest extends TestCase
      */
     public function testNewInstance()
     {
-        $a = $this->invokeMethod('newInstance', ['a@SESS']);
-        $b = $this->invokeMethod('newInstance', ['a']);
+        $def = ['class' => A::class, 'args' => []];
+        $a = $this->invokeMethod('newInstance', [$def]);
+        $b = $this->invokeMethod('newInstance', [$def]);
         $this->assertTrue(is_object($a));
         $this->assertTrue(is_object($b));
         $this->assertFalse($a === $b);
@@ -114,49 +151,9 @@ class ContainerTraitTest extends TestCase
 
         $b = $this->invokeMethod('getInstance', ['container']);
         $this->assertTrue($b instanceof Container);
-    }
 
-    /**
-     * @covers Phoole\Di\Util\ContainerTrait::reloadAll()
-     */
-    public function testReloadAll()
-    {
-        $a = $this->invokeMethod('getInstance', ['a']);
-        $b = $this->invokeMethod('getInstance', ['a']);
-        $this->assertTrue($a === $b);
-
-        $this->invokeMethod('reloadAll');
-        $c = $this->invokeMethod('getInstance', ['a']);
-        $this->assertFalse($a === $c);
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->obj = new Container(
-            new Config(
-                [
-                    'name.a' => A::class,
-                    'di.service' => [
-                        'a' => '${name.a}',
-                        'b' => [
-                            'class' => B::class,
-                            'args' => [],
-                        ],
-                        'c' => [
-                            'class' => C::class,
-                            'args' => ['${#a}']
-                        ],
-                    ]
-                ]
-            )
-        );
-        $this->ref = new \ReflectionClass(get_class($this->obj));
-    }
-
-    protected function tearDown(): void
-    {
-        $this->obj = $this->ref = NULL;
-        parent::tearDown();
+        // get by classname
+        $this->assertTrue($a === $this->obj->get(Config::class));
+        $this->assertTrue($b === $this->obj->get(Container::class));
     }
 }

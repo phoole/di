@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace Phoole\Di;
 
 use Psr\Container\ContainerInterface;
+use Phoole\Di\Exception\LogicException;
 
 /**
  * ContainerAwareInterface
@@ -28,7 +29,7 @@ interface ContainerAwareInterface
 
     /**
      * @return ContainerInterface
-     * @throws \LogicException     if not set yet
+     * @throws LogicException     if not set yet
      */
     public function getContainer(): ContainerInterface;
 }

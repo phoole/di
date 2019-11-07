@@ -11,13 +11,15 @@ declare(strict_types=1);
 
 namespace Phoole\Di;
 
-use Phoole\Config\ConfigInterface;
+use Phoole\Config\Config;
 use Phoole\Di\Util\ContainerTrait;
+use Phoole\Di\Util\StaticAccessTrait;
 use Psr\Container\ContainerInterface;
-use Phoole\Di\Exception\LogicException;
 use Phoole\Config\ConfigAwareInterface;
+use Phoole\Di\Exception\LogicException;
 use Phoole\Di\Exception\NotFoundException;
 use Phoole\Base\Reference\ReferenceInterface;
+use Phoole\Di\Exception\UnresolvedClassException;
 
 /**
  * Dependency Injection
@@ -27,54 +29,29 @@ use Phoole\Base\Reference\ReferenceInterface;
 class Container implements ContainerInterface, ReferenceInterface, ConfigAwareInterface
 {
     use ContainerTrait;
-
-    /**
-     * @var
-     */
-    protected static $container;
+    use StaticAccessTrait;
 
     /**
      * Constructor
      *
-     * $config    is the Phoole\Config\Config object
-     * $delegator is for lookup delegation. If NULL will use $this
+     * $config    for config & reference lookup
+     * $delegator for object lookup. If NULL will use $this
      *
-     * @param  ConfigInterface    $config
+     * @param  Config             $config
      * @param  ContainerInterface $delegator
      */
     public function __construct(
-        ConfigInterface $config,
+        Config $config,
         ?ContainerInterface $delegator = NULL
     ) {
         $this->setConfig($config);
-        $this->delegator = $delegator ?? $this;
+        $this->setDelegator($delegator);
 
-        $this->setReferencePattern('${#', '}');
-        $this->reloadAll();
+        // for static access
+        self::setContainer($this);
 
-        self::$container = $this;
-    }
-
-    /**
-     * Access objects from a static way
-     *
-     * @param  string $name
-     * @param  array  $arguments
-     * @return object
-     * @throws LogicException
-     */
-    public static function __callStatic($name, $arguments): object
-    {
-        $container = self::$container;
-        if (is_null($container)) {
-            throw new LogicException("unInitialized container");
-        }
-
-        $object = $container->get($name);
-        if (!empty($arguments) && is_callable($object)) {
-            return $object($arguments);
-        }
-        return $object;
+        // create all objects now
+        $this->initContainer();
     }
 
     /**
@@ -83,29 +60,34 @@ class Container implements ContainerInterface, ReferenceInterface, ConfigAwareIn
      * // get the cache object
      * $cache = $container->get('cache');
      *
-     * // get a NEW cache object
+     * // always get a NEW cache object
      * $cacheNew = $container->get('cache@');
      *
      * // get an object shared in SESSION scope
      * $sessCache = $container->get('cache@SESSION');
+     *
+     * // get object (created already by definition) by classname/interface name
+     * // useful for dependency injection
+     * $cache = $container->get(CacheInterface::class);
+     *
+     * // get a NEW object by classname
+     * // useful for creating object and utilize 'di.before' & 'di.after'
+     * $obj = $container->get(myClass::class);
      * ```
      *
      * {@inheritDoc}
      */
     public function get($id): object
     {
-        // defined
+        // check definition
         if ($this->hasDefinition($id)) {
             return $this->getInstance($id);
         }
-
-        // matching a classname
-        $object = $this->matchClass($id);
-        if (is_object($object)) {
+        // check classmap
+        if (is_object($object = $this->matchClass($id))) {
             return $object;
         }
-
-        throw new NotFoundException("Service $id not found");
+        throw new NotFoundException("Object '$id' not found");
     }
 
     /**
@@ -113,10 +95,76 @@ class Container implements ContainerInterface, ReferenceInterface, ConfigAwareIn
      */
     public function has($id): bool
     {
-        if ($this->hasDefinition($id) || is_object($this->matchClass($id))) {
-            return TRUE;
-        } else {
-            return FALSE;
+        return $this->hasDefinition($id) || NULL !== $this->hasClass($id);
+    }
+
+    /**
+     * Reload & resolve all service definitions
+     *
+     * @return void
+     */
+    protected function initContainer(): void
+    {
+        // set object reference pattern
+        $this->setReferencePattern('${#', '}');
+
+        // predefine couple of ids
+        $tree = $this->getConfig()->getTree();
+        $tree->add($this->getRawId('config'), $this->getConfig());
+        $tree->add($this->getRawId('container'), $this->delegator);
+
+        // resolve all services
+        $this->autoResolve();
+
+        // resolve all object reference in the config
+        $settings = &$tree->get('');
+        $this->deReference($settings);
+    }
+
+    /**
+     * Resolve defined ids
+     *
+     * @param  array $ids
+     * @param  bool  $autoClass
+     * @return void
+     */
+    protected function resolveAllIds(array &$ids, bool $autoClass = FALSE): void
+    {
+        $this->autoLoad = $autoClass;
+        $max = count($ids) * 3;
+        $cnt = 0;
+        while ($id = array_shift($ids)) {
+            if ($cnt++ > $max) {
+                $ids[] = $id;
+                break;
+            }
+            try {
+                $this->get($id);
+            } catch (UnresolvedClassException $e) {
+                $ids[] = $id;
+            }
+        }
+        $this->autoLoad = FALSE;
+    }
+
+    protected function autoResolve(): void
+    {
+        // get all ids of the defined services
+        $ids = array_keys($this->getConfig()->get($this->prefix . 'service'));
+
+        // resolve in service definition only
+        if (!empty($ids)) {
+            $this->resolveAllIds($ids);
+        }
+
+        // try autoload class
+        if (!empty($ids)) {
+            $this->resolveAllIds($ids, TRUE);
+        }
+
+        // error
+        if (!empty($ids)) {
+            throw new LogicException("Container error for ID " . $ids[0]);
         }
     }
 }

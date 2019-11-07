@@ -12,13 +12,9 @@ class A
 {
 }
 
-;
-
 class B
 {
 }
-
-;
 
 class C
 {
@@ -30,7 +26,30 @@ class C
     }
 }
 
-;
+class D
+{
+}
+
+class DD extends D
+{
+}
+
+class E
+{
+}
+
+class X
+{
+    public $d;
+
+    public $e;
+
+    public function __construct(D $d, E $e)
+    {
+        $this->d = $d;
+        $this->e = $e;
+    }
+}
 
 class ContainerTest extends TestCase
 {
@@ -53,8 +72,10 @@ class ContainerTest extends TestCase
                         ],
                         'c' => [
                             'class' => C::class,
-                            'args' => ['${#a}']
+                            //'args' => ['${#a}']
                         ],
+                        'x' => X::class,
+                        'd' => DD::class,
                     ]
                 ]
             )
@@ -85,7 +106,7 @@ class ContainerTest extends TestCase
         $this->assertTrue($this->obj->has('a@SESSION'));
 
         $this->assertTrue($this->obj->has('b'));
-        $this->assertFalse($this->obj->has('x'));
+        $this->assertFalse($this->obj->has('Y'));
     }
 
     /**
@@ -105,9 +126,16 @@ class ContainerTest extends TestCase
         $this->assertTrue($a === $x->a);
 
         $this->expectExceptionMessage('not found');
-        $this->obj->get('x');
+        $this->obj->get('y');
 
         $this->assertTrue($this->obj === $this->obj->get('container'));
+    }
+
+    public function testGet2()
+    {
+        $x = $this->obj->get('x');
+        $this->assertTrue($x instanceof X);
+        $this->assertTrue($x->d instanceof DD);
     }
 
     /**

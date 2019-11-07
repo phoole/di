@@ -11,45 +11,48 @@ declare(strict_types=1);
 
 namespace Phoole\Di\Util;
 
-use ReflectionClass;
 use Phoole\Di\Exception\LogicException;
+use Phoole\Di\Exception\UnresolvedClassException;
 
 /**
  * FactoryTrait
+ *
+ * Fabricate object by its definition
  *
  * @package Phoole\Di
  */
 trait FactoryTrait
 {
+    use AutowiringTrait;
+
     /**
      * fabricate the object using the definition
      *
-     * @param  string|object|array $definition
+     * @param  array $definition
      * @return object
      * @throws LogicException if something goes wrong
+     * @throws UnresolvedClassException if parameter unresolved
      */
-    protected function fabricate($definition): object
+    protected function fabricate(array $definition): object
     {
-        // fix definition
-        $def = $this->fixDefinition($definition);
+        // beforehand
+        $this->aroundConstruct($definition, 'before');
 
         // construct it
-        if (is_string($def['class'])) {
-            $obj = $this->constructObject($def['class'], $def['args']);
-        } else {
-            $obj = $this->executeCallable($def['class'], $def['args']);
+        if (is_string($definition['class'])) { // class name provided
+            $obj = $this->constructObject($definition['class'], $definition['args']);
+        } else { // callable stored in $def['class']
+            $obj = $this->executeCallable($definition['class'], $definition['args']);
         }
 
         // aftermath
-        $this->afterConstruct($obj, $def);
-
-        return $obj;
+        return $this->aroundConstruct($definition, 'after', $obj);
     }
 
     /**
      * fix object definition
      *
-     * @param  string|object|array $definition
+     * @param  string|object|callable $definition
      * @return array
      */
     protected function fixDefinition($definition): array
@@ -71,19 +74,24 @@ trait FactoryTrait
      * @param  string $class      class name
      * @param  array  $arguments  constructor arguments
      * @return object
-     * @throws LogicException       if something goes wrong
-     * @throws \ReflectionException if reflection goes wrong
+     * @throws UnresolvedClassException
+     * @throws LogicException
      */
     protected function constructObject(string $class, array $arguments): object
     {
         try {
-            $reflector = new ReflectionClass($class);
+            $reflector = new \ReflectionClass($class);
             $constructor = $reflector->getConstructor();
             if (is_null($constructor)) {
                 return $reflector->newInstanceWithoutConstructor();
             } else {
+                $arguments = $this->matchArguments(
+                    $arguments, $constructor->getParameters()
+                );
                 return $reflector->newInstanceArgs($arguments);
             }
+        } catch (UnresolvedClassException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             throw new LogicException($e->getMessage());
         }
@@ -96,49 +104,66 @@ trait FactoryTrait
      * @param  array           $arguments  constructor arguments
      * @return mixed
      * @throws LogicException       if something goes wrong
+     * @throws UnresolvedClassException if parameter unresolved
      */
     protected function executeCallable($callable, array $arguments)
     {
         if (is_callable($callable)) {
-            return call_user_func_array($callable, $arguments);
-        } elseif (is_object($callable)) {
-            return $callable;
-        } else {
-            throw new LogicException((string) $callable . " not a callable");
+            try {
+                $arguments = $this->matchArguments(
+                    $arguments, $this->getCallableParameters($callable)
+                );
+                return call_user_func_array($callable, $arguments);
+            } catch (UnresolvedClassException $e) {
+                throw $e;
+            } catch (\Throwable $e) {
+                throw new LogicException($e->getMessage());
+            }
         }
+
+        if (is_object($callable)) {
+            return $callable;
+        }
+
+        throw new LogicException((string) $callable . " not a callable");
     }
 
     /**
-     * processing service aftermath
+     * Processing service beforehand / aftermath
      *
-     * @param  object $object
-     * @param  array  $definition
-     * @return void
+     * @param  array  $definition  service definition
+     * @param  string $stage       'before' or 'after'
+     * @param  object $object      the created object
+     * @return object|null
+     * @throws UnresolvedClassException
+     * @throws LogicException
      */
-    protected function afterConstruct(object $object, array $definition): void
-    {
-        if (isset($definition['after'])) {
-            foreach ($definition['after'] as $line) {
-                list($callable, $arguments) = $this->fixMethod($object, (array) $line);
+    protected function aroundConstruct(
+        array $definition, string $stage, ?object $object = NULL
+    ): ?object {
+        if (isset($definition[$stage])) {
+            foreach ($definition[$stage] as $line) {
+                list($callable, $arguments) = $this->fixMethod((array) $line, $object);
                 $this->executeCallable($callable, $arguments);
             }
         }
+        return $object;
     }
 
     /**
-     * fix the 'after' part of definition
+     * fix methods in the 'after'|'before' part of definition
      *
-     * @param  object $object
-     * @param  array  $line
+     * @param  array       $line
+     * @param  object|null $object
      * @return array  [Callable, arguments]
      * @throws LogicException   if goes wrong
      */
-    protected function fixMethod(object $object, array $line): array
+    protected function fixMethod(array $line, ?object $object = NULL): array
     {
-        if (is_string($line[0]) && method_exists($object, $line[0])) {
-            $callable = [$object, $line[0]];
-        } elseif (is_callable($line[0])) {
+        if (is_callable($line[0])) {
             $callable = $line[0];
+        } elseif (is_string($line[0]) && is_object($object) && method_exists($object, $line[0])) {
+            $callable = [$object, $line[0]];
         } else {
             throw new LogicException("Bad method definition: $line");
         }

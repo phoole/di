@@ -12,11 +12,13 @@ declare(strict_types=1);
 namespace Phoole\Di;
 
 use Psr\Container\ContainerInterface;
+use Phoole\Di\Exception\LogicException;
 
 /**
  * ContainerAwareTrait
  *
- * @package Phoole\Di
+ * @package   Phoole\Di
+ * @interface ContainerAwareInterface
  */
 trait ContainerAwareTrait
 {
@@ -36,13 +38,12 @@ trait ContainerAwareTrait
     }
 
     /**
-     * @return ContainerInterface
-     * @throws \LogicException     if not set yet
+     * {@inheritDoc}
      */
     public function getContainer(): ContainerInterface
     {
         if (is_null($this->container)) {
-            throw new \LogicException("Container not set in " . get_class($this));
+            throw new LogicException("Container not set in " . get_class($this));
         }
         return $this->container;
     }

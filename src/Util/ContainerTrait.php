@@ -12,8 +12,8 @@ declare(strict_types=1);
 namespace Phoole\Di\Util;
 
 use Phoole\Config\ConfigAwareTrait;
-use Psr\Container\ContainerInterface;
-use Phoole\Base\Reference\ReferenceTrait;
+use Phoole\Di\Exception\LogicException;
+use Phoole\Di\Exception\UnresolvedClassException;
 
 /**
  * ContainerTrait
@@ -22,127 +22,108 @@ use Phoole\Base\Reference\ReferenceTrait;
  */
 trait ContainerTrait
 {
+    use ResolveTrait;
     use FactoryTrait;
-    use ReferenceTrait;
     use ConfigAwareTrait;
 
     /**
-     * delegator for object lookup
+     * service objects stored by its service id
      *
-     * @var ContainerInterface
+     * @var object[]
      */
-    protected $delegator;
+    protected $objects = [];
 
     /**
-     * object pool
-     *
-     * @var array
-     */
-    protected $objects;
-
-    /**
-     * @var string[]
-     */
-    protected $classNames = [];
-
-    /**
-     * service definition prefix
+     * DI definition prefix in $config
      *
      * @var string
      */
-    protected $prefix = 'di.service.';
+    protected $prefix = 'di.';
 
     /**
-     * common prefix
-     *
-     * @var string
-     */
-    protected $common = 'di.common';
-
-    /**
-     * Reload all service definitions
-     *
-     * @return void
-     */
-    protected function reloadAll(): void
-    {
-        $this->objects = [];
-
-        // some predefined objects
-        $this->objects['config'] = $this->getConfig();
-        $this->objects['container'] = $this->delegator;
-
-        // do the job
-        $settings = &($this->getConfig()->getTree())->get('');
-        $this->deReference($settings);
-    }
-
-    /**
-     * Get the instance
+     * Get the instance by id, create it if not yet
      *
      * @param  string $id
      * @return object
+     * @throws UnresolvedClassException
+     * @throws LogicException
      */
     protected function getInstance(string $id): object
     {
-        // get new object
+        // found in cache
+        if (isset($this->objects[$id])) {
+            return $this->objects[$id];
+        }
+
+        // initiate object
+        $object = $this->newInstance($this->getServiceDefinition($id));
+
+        // if '@' at the end, return without store in cache
         if ('@' === substr($id, -1)) {
-            return $this->newInstance($id);
+            return $object;
         }
 
-        // check the pool for shared object
-        if (!isset($this->objects[$id])) {
-            $object = $this->newInstance($id);
-            $this->objects[$id] = $object;
-            $this->classNames[get_class($object)] = $object;
+        // store in cache
+        $this->objects[$id] = $object;
+
+        // store in classmap
+        if (FALSE === strpos($id, '@')) {
+            $this->storeClass($object);
         }
 
-        return $this->objects[$id];
+        return $object;
     }
 
     /**
-     * creaet a new instance
+     * create a new instance by its definition
      *
-     * @param  string $id
+     * @param  array $definition
      * @return object
+     * @throws UnresolvedClassException
+     * @throws LogicException
      */
-    protected function newInstance(string $id): object
+    protected function newInstance(array $definition): object
     {
-        $def = $this->getConfig()->get($this->getRawId($id));
-        $obj = $this->fabricate($def);
-        $this->executeCommon($obj);
+        $this->executeMethods($definition, 'before');
+        $obj = $this->fabricate($definition);
+        $this->executeMethods($obj, 'after');
+
         return $obj;
     }
 
     /**
-     * get the raw id as defined in $config
+     * get the raw service id with the scope '@XXX' cut-off
      *
      * @param  string $id
      * @return string
      */
     protected function getRawId(string $id): string
     {
-        return $this->prefix . explode('@', $id, 2)[0];
+        $prefix = $this->prefix . 'service.';
+        return $prefix . explode('@', $id, 2)[0];
     }
 
     /**
-     * execute common methods for newed objects
+     * execute 'di.before' or 'di.after' methods for newly created object
      *
-     * @param  object $object
+     * @param  object|array $object  newly created object or object definition
+     * @param  string       $stage   'before' | 'after'
      * @return void
+     * @throws LogicException
      */
-    protected function executeCommon(object $object): void
+    protected function executeMethods($object, string $stage): void
     {
-        if ($this->getConfig()->has($this->common)) {
-            foreach ($this->getConfig()->get($this->common) as $line) {
-                list($runner, $arguments) = $this->fixMethod($object, (array) $line);
+        $node = $this->prefix . $stage;
+        if ($this->getConfig()->has($node)) {
+            foreach ($this->getConfig()->get($node) as $line) {
+                list($runner, $arguments) = $this->fixMethod((array) $line, $object);
                 $this->executeCallable($runner, $arguments);
             }
         }
     }
 
     /**
-     * Try find a service in the definition
+     * Find a service in the definitions
      *
      * @param  string $id
      * @return bool
@@ -153,24 +134,12 @@ trait ContainerTrait
     }
 
     /**
-     * @param  string $className
-     * @return object|null
+     * @param  string $id
+     * @return array
      */
-    protected function matchClass(string $className): ?object
+    protected function getServiceDefinition(string $id): array
     {
-        foreach ($this->classNames as $class => $object) {
-            if (is_a($className, $class, TRUE)) {
-                return $object;
-            }
-        }
-        return NULL;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected function getReference(string $name)
-    {
-        return $this->delegator->get($name);
+        $def = $this->getConfig()->get($this->getRawId($id));
+        return $this->fixDefinition($def);
     }
 }
