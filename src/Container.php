@@ -45,7 +45,7 @@ class Container implements ContainerInterface, ReferenceInterface, ConfigAwareIn
         ?ContainerInterface $delegator = NULL
     ) {
         $this->setConfig($config);
-        $this->setDelegator($delegator);
+        $this->setDelegator($delegator ?? $this);
 
         // for static access
         self::setContainer($this);

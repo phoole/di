@@ -82,7 +82,7 @@ trait ContainerTrait
      * @throws UnresolvedClassException
      * @throws LogicException
      */
-    protected function newInstance(array $definition): object
+    public function newInstance(array $definition): object
     {
         $this->executeMethods($definition, 'before');
         $obj = $this->fabricate($definition);
@@ -116,7 +116,9 @@ trait ContainerTrait
         $node = $this->prefix . $stage;
         if ($this->getConfig()->has($node)) {
             foreach ($this->getConfig()->get($node) as $line) {
-                list($runner, $arguments) = $this->fixMethod((array) $line, $object);
+                list($runner, $arguments) = $this->fixMethod(
+                    (array) $line, is_object($object) ? $object : NULL
+                );
                 $this->executeCallable($runner, $arguments);
             }
         }

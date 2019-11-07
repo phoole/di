@@ -52,7 +52,7 @@ trait FactoryTrait
     /**
      * fix object definition
      *
-     * @param  string|object|callable $definition
+     * @param  mixed $definition
      * @return array
      */
     protected function fixDefinition($definition): array

@@ -48,8 +48,7 @@ trait ResolveTrait
      */
     protected function setDelegator(?ContainerInterface $delegator = NULL)
     {
-        $this->delegator = $delegator ?? $this;
-
+        $this->delegator = $delegator;
         return $this;
     }
 }

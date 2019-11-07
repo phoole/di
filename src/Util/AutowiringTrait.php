@@ -47,7 +47,7 @@ trait AutowiringTrait
             if ($this->isTypeMatched($param->getClass(), $providedArguments)) {
                 $resolvedArguments[$i] = array_shift($providedArguments);
             } elseif ($this->isRequiredClass($param, $providedArguments)) {
-                $resolvedArguments[$i] = $this->getObjectByClass($param->getClass()->getName());
+                $resolvedArguments[$i] = $this->getObjectByClass($param->getClass()->name);
             }
         }
         return array_merge($resolvedArguments, $providedArguments);
@@ -65,7 +65,7 @@ trait AutowiringTrait
         if (empty($arguments)) {
             return FALSE;
         } elseif (NULL !== $class) {
-            return is_a($arguments[0], $class->getName());
+            return is_a($arguments[0], $class->name);
         } else {
             return TRUE;
         }
