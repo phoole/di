@@ -23,7 +23,10 @@ use Phoole\Di\Exception\UnresolvedClassException;
  * Static facade extension
  *
  * ```php
+ * // accesss predefined service
  * $cache = Container::cache();
+ *
+ * // create an object whose dependencies will be injected automatically
  * $obj = Container::create(MyClass::class);
  * ```
  *
@@ -37,10 +40,15 @@ trait StaticAccessTrait
     protected static $containers = [];
 
     /**
-     * Mostly for getting an anonymous object by its classname.
+     * Initiate an object with its dependencies injected automatically
      *
      * - dependency in constructor is resolved automatically
      * - 'di.before' & 'di.after' methods executed on this object
+     *
+     * ```php
+     * // with all dependencies injected already
+     * $myObj = Container::create(MyClass::class);
+     * ```
      *
      * @param  string|callable|object $className  object or classname
      * @param  array                  $arguments  constructor arguments if any
@@ -54,11 +62,14 @@ trait StaticAccessTrait
     }
 
     /**
-     * Get object by its id in a STATIC way
+     * Get service object (predefined) by its id in a STATIC way
      *
      * ```php
      * $cache = Container::cache();
      * $logger = Container::logger();
+     *
+     * // invokable way, get a mysql db connection
+     * $db = Container::db('mysql');
      * ```
      *
      * @param  string $name       service id
@@ -66,7 +77,7 @@ trait StaticAccessTrait
      * @return object
      * @throws NotFoundExceptionInterface  No entry was found for **this** identifier.
      * @throws LogicException              if container not instantiated
-     * @throws UnresolvedClassException    if parameter not resolved
+     * @throws UnresolvedClassException    if parameters not resolved
      * @throws RuntimeException            if invokable goes wrong
      */
     public static function __callStatic($name, $arguments): object

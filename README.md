@@ -6,7 +6,7 @@
 [![Latest Stable Version](https://img.shields.io/github/v/release/phoole/di)](https://packagist.org/packages/phoole/di)
 [![License](https://img.shields.io/github/license/phoole/di)]()
 
-**phoole/di** is a slim and powerful [PSR-11][PSR-11] implementation of dependency injection 
+A slim, powerful and standalone [PSR-11][PSR-11] implementation of dependency injection 
 library for PHP.
 
 It builds upon the versatile [phoole/config][config] library and supports
@@ -40,36 +40,42 @@ or add the following lines to your `composer.json`
 Usage
 ---
 
-- With configuration from files or array
+- With configuration from files or definition array
 
   ```php
   use Phoole\Di\Container;
   use Phoole\Config\Config;
+  use Phoole\Cache\Cache;
+  use Phoole\Cache\Adaptor\FileAdaptor;
 
   $configData = [
       // service definitions
       'di.service' => [
-          // cache service
-          'cache'  => ['class' => 'MyCache', 'args' => ['${#driver}']],
+          // classname & constructor arguments
+          'cache'  => [
+              'class' => Cache::class,
+              'args' => ['${#cacheDriver}'] // optional
+          ],
 
-          // cache driver, may use classname directly
-          'driver' => 'MyCacheDriver',
+          // use classname directly
+          'cacheDriver' => FileAdaptor::class
       ],
 
-      // common methods to run after each object creation
-      'di.common' => [
-          function($obj, $container) { echo "ok"; },
+      // methods to run after each object initiation
+      'di.after' => [
+          // a callable, takes THE object as parameter
+          function($obj) { echo "ok"; },
+  
+          // will be converted to $obj->setLogger($logger)
+          'setLogger',
       ]
   ];
 
-  // inject config into container
+  // inject configurations into container
   $container = new Container(new Config($configData));
 
   // get service by id 'cache' (di.service.cache)
   $cache = $container->get('cache');
-
-  // true
-  var_dump($cache instanceof \MyCache);
   ```
 
   Container related configurations are under the node `di` and service definitions
@@ -89,15 +95,39 @@ Features
 
   - <a name="pref"></a>Parameter references `${system.tempdir}`
 
+    ```php
+    $config = [
+        ...
+        // use predefined 'sytem.tmpdir' in arguments etc.
+        'di.service.cacheDriver' => [
+            'class' => FileAdaptor::class,
+            'args'  => ['${system.tmpdir}'],
+        ],
+        ...
+    ];
+    ```
+  
     See [phoole/config reference](https://github.com/phoole/config#ref) for
     detail. Parameter references are read from configuration files or array.
+  
+  - <a name="sref"></a>Service references
 
-  - <a name="sref"></a>Service references `${#cache}`
-
-    Service reference in the form of `${#serviceId}` can be used to referring
+    Service object reference in the form of `${#serviceId}` can be used to referring
     a service instance in the container.
 
-    Two reserved service references are `${#container}` and `${#config}`.
+    ```php
+    $configData = [
+      ...
+      'di.service' => [
+          'cache'  => [
+              'class' => Cache::class,
+              'args' => ['${#cacheDriver}'] // object reference
+          ],
+          'cacheDriver' => ...
+      ...
+    ```
+    
+    Two reserved service references are **`${#container}`** and **`${#config}`**.
     These two are referring the container instance itself and the config instance
     it is using. These two can be used just like other service references.
 
@@ -107,9 +137,11 @@ Features
 
     ```php
     $confData = [
-        'di.common' => [
+        // methods executed after ALL object initiation
+        'di.after' => [
             [['${#logger}', 'notice'], ['object created using ${log.facility}']]
-    ]];
+        ]
+    ];
     ```
 
 - <a name="decorate"></a>**Object decorating**
@@ -117,22 +149,30 @@ Features
   *Object decorating* is to apply decorating changes (executing methods etc.)
   right before or after the instantiation of a service instance.
 
-  - Decorating methods for *individual instance* only
+  - Decorating methods for **individual instance** only
 
     ```php
-    $container->set('cache', [
-        'class'  => '${cache.class}',
-        'args'   => ['${#cachedriver}'], // constructor arguments
-        'before' => [
-            [['${#logger}', 'info'], ['before creating cache']], // $logger->info(...)
-        ],
-        'after'  => [
-            'clearCache', // $cache->clearCache() method
-            ['setLogger', ['${#logger}']], // $cache->setLogger($logger)
-            [['${#logger}', 'setLabel'], ['cache_label']], // $logger->setLabel('cache_label')
-            // ...
-        ],
-    ]);
+    $config = [
+       'di.service' => [
+           ...
+           'cache', [
+               'class'  => '${cache.class}',
+               'args'   => ['${#cachedriver}'], // constructor arguments
+               'before' => [
+                   [['${#logger}', 'info'], ['before initiating cache']], // $logger->info(...)
+               ],
+               'after'  => [
+                   'clearCache', // $cache->clearCache() method
+                   ['setLogger', ['${#logger}']], // $cache->setLogger($logger), argument is optional
+                   [['${#logger}', 'info'], ['just a info']], // $logger->info(...)
+                   function($cache) { // a callable takes object in parameter
+
+                   }, 
+               ]
+           ],
+           ...
+       ]
+    ];
     ```
 
     By adding `before` or `after` section into the `cache` service definition in the
@@ -141,39 +181,64 @@ Features
 
     `callableOrMethodName` here can be,
 
-    - method name of current instance
+    - method name of initiated object
 
-    - a valid callable
-
+      ```php
+      ...
+        'after' => [
+            // $obj->setLogger($logger), $logger will be injected automatically
+            'setLogger', // object implementing 'LoggerAwareInterface'
+        ],
+      ...
+      ```
+      
+    - a valid callable which takes initiated object as parameter
+    
+      ```php
+       ...
+         'after' => [
+             // callable takes initiated object as parameter
+             function($obj) {
+             },
+         ],
+       ...
+      ```
     - a pseudo callable with references (after resolving the references, it is
       a valid callable).
 
+      ```php
+       ...
+         'after' => [
+             // a pseudo callable with references
+             [['${#logger}', 'info'], ['just a info']], // $logger->info(...)
+         ],
+       ...
+      ```
+      
     `OptionalArgumentArray` here can be,
 
-    - empty
+      - empty
 
-    - array of values or references
+      - array of values or references
 
-  - Common decorating methods for *all instances*
+  - Common decorating methods for **all instances**
 
     ```php
     $configData = [
-        // before instances created
+        // before all instances initiated
         'di.before' => [
             [['${#logger}', 'info'], ['before create']],
         ],
         // after methods for all instances
         'di.after' => [
-            ['setLogger', ['${#logger}']], // $obj->setLogger($logger)
+            ['setLogger', ['${#logger}']], // arguments are optional
+            'setDispatcher',  // simple enough, set event dispatcher
         ],
     ];
     ```
 
-    Common methods can be configured in the 'di.common' node to apply to all the
-    instances right after their instantiation. The definition consists of two
-    parts, the first is a tester callable takes current instance and the
-    container as parameters and returns a boolean value. The second part is in
-    the same method format as in the service definition 'after'.
+    Common methods can be configured in the 'di.before' or 'di.after' node to apply
+    to all the instances right before or after their instantiation.
 
 - <a name="scope"></a>**Object scope**
 
@@ -193,18 +258,18 @@ Features
     // same
     var_dump($cache1 === $cache2); // true
 
-    // get a new cache instance
+    // get a NEW cache instance
     $cache3 = $container->get('cache@');
 
     // different instances
     var_dump($cache1 !== $cache3); // true
 
     // but both share the same cacheDriver dependent service
-    var_dump($cache1->getDriver() === $cache3->getDriver()); // true
+    var_dump($cache1->getAdaptor() === $cache3->getAdaptor()); // true
     ```
 
   - Object scope
-
+  
     You may get an instance in your own scope as follows
 
     ```php
@@ -226,24 +291,98 @@ Features
 
     ```php
     $container->set('cache', [
-        'class' => 'Phossa2\\Cache\\Cache',
+        'class' => Cache::class,
         'args'  => ['${#driver@myScope}'] // use driver of myScope
     ]);
     ```
-  - static or `FACADE` access
+
+- <a name="static"></a>**Static access**
+  
+  - Access predefined services statically
   
     Objects in the container can also be access through a static way. Couple of 
-    names are reserved. e.g. `get` and `has`. Also couple of predefined objects
-    are `config` and `container`.
+    names are reserved. e.g. `get` and `has`.
     
     ```php
+    // after container initiated
     // equals to $cache = $container->get('cache')
     $cache = Container::cache();
     
-    // if __invoke() defined in object
+    // if myservice defined and invokable
     $obj = Container::myservice('test');
     ``` 
+  - Initiating object by taking advantage or dependency injection
+  
+    ```php
+    use Phoole\Cache\Cache;
+    use Psr\Log\LoggerAwareTrait;
+    use Psr\Log\LoggerAwareInterface;
     
+    class MyClass implements LoggerAwareInterface
+    {
+         use LoggerAwareTrait;
+    
+         public function __construct(Cache $cache)
+         {
+         }
+    }
+    
+    // $cache will be injected automatically
+    // also 'setLogger' will be executed if defined in '.after' section
+    $obj = Container::create(MyClass::class);
+    ```
+
+- <a name="autowiring"></a>**Autowiring** and **Injection**
+  
+  - Automatically parameter resolving (autowiring)
+    
+    Parameters of a constructor/callable will be resolved by looking
+   
+    - exists in the classmap (service objects created already) ?
+   
+    - classname known to the script (class defined but not in container configs) ?
+  
+  - Auto injection
+  
+    Instead of using 'annotation', we encourage of using `*AwareInterface` for your
+    own classes' dependency injection.
+    
+    ```php
+    use Psr\Log\LoggerAwareTrait;
+    use Psr\Log\LoggerAwareInterface;
+    
+    class MyOwnClass implements LoggerAwareInterface
+    {
+         use LoggerAwareTrait;
+         ...
+    }
+    
+    // create your object with arguments
+    $obj = Container::create(MyOnwClass::class, [...]);
+    ```
+    
+    `Container` has all the common injection predefined in the `di.after` section
+    
+    ```php
+    $config = [
+    
+        'di.after' => [
+            'setLogger',        // logger aware
+            'setCache',         // cache aware
+            'setDispatcher',    // event aware
+            'setContainer',     // container aware
+            ...
+        ],
+    ];
+    
+    $container = new Container(new Config());
+    ...
+    ```
+
+- <a name="aware"></a>**`ContainerAWareInterface`**
+
+  Both `ContainerAWareInterface` and `ContainerAWareTrait` available. 
+
 APIs
 ---
 

@@ -28,6 +28,8 @@ trait ContainerAwareTrait
     protected $container;
 
     /**
+     * Inject the container
+     *
      * @param  ContainerInterface $container
      * @return $this
      */

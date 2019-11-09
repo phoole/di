@@ -18,6 +18,8 @@ use Phoole\Di\Exception\UnresolvedClassException;
 /**
  * AutowiringTrait
  *
+ * Automatically resolve Dependency::class stuff
+ *
  * @package Phoole\Di
  */
 trait AutowiringTrait
@@ -26,6 +28,8 @@ trait AutowiringTrait
     use ParameterTrait;
 
     /**
+     * enable autowiring or not
+     *
      * @var bool
      */
     protected $autoLoad = FALSE;
@@ -95,17 +99,18 @@ trait AutowiringTrait
      */
     protected function getObjectByClass(string $classname): object
     {
-        // try classmap
+        // try classmap FIRST!
         $object = $this->matchClass($classname);
         if (is_object($object)) {
             return $object;
         }
 
-        // try autoload
+        // try autowiring IF ENABLED
         if ($this->autoLoad && class_exists($classname)) {
             return Container::create($classname);
         }
 
+        // not found
         throw new UnresolvedClassException($classname);
     }
 }

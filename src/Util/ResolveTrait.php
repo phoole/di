@@ -33,7 +33,7 @@ trait ResolveTrait
     protected $delegator;
 
     /**
-     * Object lookup with delegator
+     * Object lookup with delegator by its 'name'
      *
      * {@inheritDoc}
      */

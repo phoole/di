@@ -22,6 +22,8 @@ use Phoole\Di\Exception\LogicException;
 interface ContainerAwareInterface
 {
     /**
+     * Inject the container
+     *
      * @param  ContainerInterface $container
      * @return $this
      */

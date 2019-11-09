@@ -30,12 +30,12 @@ trait FactoryTrait
      *
      * @param  array $definition
      * @return object
-     * @throws LogicException if something goes wrong
+     * @throws LogicException   if 'before|after' methods defined wrong
      * @throws UnresolvedClassException if parameter unresolved
      */
     protected function fabricate(array $definition): object
     {
-        // beforehand
+        // execute its own beforehand methods
         $this->aroundConstruct($definition, 'before');
 
         // construct it
@@ -45,7 +45,7 @@ trait FactoryTrait
             $obj = $this->executeCallable($definition['class'], $definition['args']);
         }
 
-        // aftermath
+        // execute its own aftermath methods
         return $this->aroundConstruct($definition, 'after', $obj);
     }
 
@@ -69,13 +69,13 @@ trait FactoryTrait
     }
 
     /**
-     * Instantiate service object
+     * Instantiate the object
      *
      * @param  string $class      class name
      * @param  array  $arguments  constructor arguments
      * @return object
-     * @throws UnresolvedClassException
-     * @throws LogicException
+     * @throws UnresolvedClassException if parameters unresolved
+     * @throws LogicException if definition went wrong
      */
     protected function constructObject(string $class, array $arguments): object
     {
@@ -103,7 +103,7 @@ trait FactoryTrait
      * @param  callable|object $callable   callable
      * @param  array           $arguments  constructor arguments
      * @return mixed
-     * @throws LogicException       if something goes wrong
+     * @throws LogicException       if definition went wrong
      * @throws UnresolvedClassException if parameter unresolved
      */
     protected function executeCallable($callable, array $arguments)
@@ -135,15 +135,17 @@ trait FactoryTrait
      * @param  string $stage       'before' or 'after'
      * @param  object $object      the created object
      * @return object|null
-     * @throws UnresolvedClassException
-     * @throws LogicException
+     * @throws UnresolvedClassException if arguments not resolved
+     * @throws LogicException if method definitions went wrong
      */
     protected function aroundConstruct(
         array $definition, string $stage, ?object $object = NULL
     ): ?object {
         if (isset($definition[$stage])) {
             foreach ($definition[$stage] as $line) {
-                list($callable, $arguments) = $this->fixMethod((array) $line, $object);
+                list($callable, $arguments) = $this->fixMethod(
+                    (array) $line, $object ?? $definition
+                );
                 $this->executeCallable($callable, $arguments);
             }
         }
@@ -153,20 +155,25 @@ trait FactoryTrait
     /**
      * fix methods in the 'after'|'before' part of definition
      *
-     * @param  array       $line
-     * @param  object|null $object
+     * @param  array        $line
+     * @param  object|array $object  or object definition
      * @return array  [Callable, arguments]
-     * @throws LogicException   if goes wrong
+     * @throws LogicException   if definition went wrong
      */
-    protected function fixMethod(array $line, ?object $object = NULL): array
+    protected function fixMethod(array $line, $object): array
     {
+        // callable found
         if (is_callable($line[0])) {
             $callable = $line[0];
+            $arguments = (array) ($line[1] ?? [$object]);
+            // object method found [$object, 'method']
         } elseif (is_string($line[0]) && is_object($object) && method_exists($object, $line[0])) {
             $callable = [$object, $line[0]];
+            $arguments = (array) ($line[1] ?? []);
+            // nothing right
         } else {
             throw new LogicException("Bad method definition: $line");
         }
-        return [$callable, (array) ($line[1] ?? [])];
+        return [$callable, $arguments];
     }
 }

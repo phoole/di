@@ -41,12 +41,12 @@ trait ContainerTrait
     protected $prefix = 'di.';
 
     /**
-     * Get the instance by id, create it if not yet
+     * Get the instance by SERVICE id, create it if not yet
      *
-     * @param  string $id
+     * @param  string $id  defined service id
      * @return object
-     * @throws UnresolvedClassException
-     * @throws LogicException
+     * @throws UnresolvedClassException  if dependencies unresolved
+     * @throws LogicException if 'di.before' or 'di.after' definitions go wrong
      */
     protected function getInstance(string $id): object
     {
@@ -63,10 +63,10 @@ trait ContainerTrait
             return $object;
         }
 
-        // store in cache
+        // store in object cache
         $this->objects[$id] = $object;
 
-        // store in classmap
+        // store object in classmap
         if (FALSE === strpos($id, '@')) {
             $this->storeClass($object);
         }
@@ -75,31 +75,39 @@ trait ContainerTrait
     }
 
     /**
-     * create a new instance by its definition
+     * initiate an object by its definition
      *
      * @param  array $definition
      * @return object
-     * @throws UnresolvedClassException
-     * @throws LogicException
+     * @throws UnresolvedClassException if dependencies unresolved
+     * @throws LogicException if 'di.before' or 'di.after' definitions go wrong
      */
     public function newInstance(array $definition): object
     {
+        // execute global beforehand 'di.before' methods
         $this->executeMethods($definition, 'before');
+
+        // fabricate this object
         $obj = $this->fabricate($definition);
+
+        // execute global aftermath ('di.after') methods
         $this->executeMethods($obj, 'after');
 
         return $obj;
     }
 
     /**
-     * get the raw service id with the scope '@XXX' cut-off
+     * get the raw service id by adding prefix & stripping the scope '@XXX' off
      *
      * @param  string $id
      * @return string
      */
     protected function getRawId(string $id): string
     {
+        // 'di.service.' prefix
         $prefix = $this->prefix . 'service.';
+
+        // cutoff the scope suffix
         return $prefix . explode('@', $id, 2)[0];
     }
 
@@ -109,23 +117,22 @@ trait ContainerTrait
      * @param  object|array $object  newly created object or object definition
      * @param  string       $stage   'before' | 'after'
      * @return void
-     * @throws LogicException
+     * @throws LogicException if 'di.before' or 'di.after' definitions go wrong
      */
     protected function executeMethods($object, string $stage): void
     {
+        // 'di.before' or 'di.after'
         $node = $this->prefix . $stage;
         if ($this->getConfig()->has($node)) {
             foreach ($this->getConfig()->get($node) as $line) {
-                list($runner, $arguments) = $this->fixMethod(
-                    (array) $line, is_object($object) ? $object : NULL
-                );
+                list($runner, $arguments) = $this->fixMethod((array) $line, $object);
                 $this->executeCallable($runner, $arguments);
             }
         }
     }
 
     /**
-     * Find a service in the definitions
+     * A service defined in the definitions ?
      *
      * @param  string $id
      * @return bool
@@ -136,6 +143,8 @@ trait ContainerTrait
     }
 
     /**
+     * Find the service definition and fix any non-standard stuff
+     *
      * @param  string $id
      * @return array
      */

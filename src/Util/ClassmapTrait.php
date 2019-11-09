@@ -14,6 +14,8 @@ namespace Phoole\Di\Util;
 /**
  * ClassmapTrait
  *
+ * Store resolved/created objects in a classmap for later access or reference
+ *
  * @package Phoole\Di
  */
 trait ClassmapTrait
@@ -23,10 +25,11 @@ trait ClassmapTrait
      *
      * @var object[]
      */
-    protected $classNames = [];
+    protected $classMaps = [];
 
     /**
-     * has service created by its classname/interface name?
+     * has service created by its classname/interface name already?
+     * returns the matching classname or NULL
      *
      * @param  string $className
      * @return string|NULL
@@ -38,13 +41,13 @@ trait ClassmapTrait
             return NULL;
         }
 
-        // exact match
-        if (isset($this->classNames[$className])) {
+        // exact match found
+        if (isset($this->classMaps[$className])) {
             return $className;
         }
 
-        // find matching parent if any
-        $classes = array_keys($this->classNames);
+        // try subclass exists or not
+        $classes = array_keys($this->classMaps);
         foreach ($classes as $class) {
             if (is_a($class, $className, TRUE)) {
                 return $class;
@@ -55,24 +58,26 @@ trait ClassmapTrait
     }
 
     /**
+     * Retrieve object from classmap if match found
+     *
      * @param  string $className
      * @return object|null
      */
     protected function matchClass(string $className): ?object
     {
         if ($class = $this->hasClass($className)) {
-            return $this->classNames[$class];
+            return $this->classMaps[$class];
         }
         return NULL;
     }
 
     /**
-     * Only store global object (not in a domain) into classmap
+     * Store object in classmap
      *
      * @param  object $object
      */
     protected function storeClass(object $object): void
     {
-        $this->classNames[get_class($object)] = $object;
+        $this->classMaps[get_class($object)] = $object;
     }
 }
