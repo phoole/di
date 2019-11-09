@@ -10,6 +10,7 @@
 /.codeclimate.yml   export-ignore
 /.editorconfig      export-ignore
 /tests              export-ignore
+/.idea              export-ignore
 /build              export-ignore
 .gitkeep            export-ignore
 .phpunit.result.cache export-ignore
