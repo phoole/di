@@ -46,14 +46,24 @@ trait ClassmapTrait
             return $className;
         }
 
-        // try subclass exists or not
+        // find subclass
+        return $this->findSubClass($className);
+    }
+
+    /**
+     * Find in map a subclass of $className if any
+     *
+     * @param  string $className
+     * @return string|null
+     */
+    protected function findSubClass(string $className): ?string
+    {
         $classes = array_keys($this->classMap);
         foreach ($classes as $class) {
             if (is_a($class, $className, TRUE)) {
                 return $class;
             }
         }
-
         return NULL;
     }
 
