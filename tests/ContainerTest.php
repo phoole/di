@@ -7,13 +7,22 @@ namespace Phoole\Tests;
 use Phoole\Di\Container;
 use Phoole\Config\Config;
 use PHPUnit\Framework\TestCase;
+use Phoole\Di\ContainerAwareTrait;
+use Phoole\Di\ContainerAwareInterface;
 
-class A
+class A implements ContainerAwareInterface
 {
+    use ContainerAwareTrait;
+
+    public $bingo = '_bingo_';
 }
 
 class B
 {
+    public function bingo($text)
+    {
+        echo $text;
+    }
 }
 
 class C
@@ -131,6 +140,9 @@ class ContainerTest extends TestCase
         $this->assertTrue($this->obj === $this->obj->get('container'));
     }
 
+    /**
+     * @covers Phoole\Di\Container::get()
+     */
     public function testGet2()
     {
         $x = $this->obj->get('x');
@@ -139,10 +151,42 @@ class ContainerTest extends TestCase
     }
 
     /**
+     * test di.before & di.after
+     * @covers Phoole\Di\Container::get()
+     */
+    public function testGet3()
+    {
+        $container = new Container(new Config([
+            'di.before' => [
+                function($def) {
+                    echo "CLASS ". $def['class'];
+                },
+                [[new B(), 'bingo'], '_wow'],
+            ],
+            'di.service' => [
+            ],
+            'di.after' => [
+                'setContainer',
+                function($obj) {
+                    echo $obj->bingo;
+                },
+                [[new B(), 'bingo'], 'wow_'],
+            ],
+        ]));
+
+        // before
+        $this->expectOutputString("CLASS ".A::class .'_wow_bingo_wow_');
+        $a = Container::create(A::class);
+        // after
+        $this->assertTrue($a->getContainer() instanceof Container);
+    }
+
+    /**
      * @covers \Phoole\Di\Container::_callStatic()
      */
     public function testCallStatic()
     {
+
         $a = Container::a();
         $this->assertTrue($a instanceof A);
     }

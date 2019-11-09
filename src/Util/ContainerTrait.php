@@ -139,7 +139,21 @@ trait ContainerTrait
      */
     protected function hasDefinition(string $id): bool
     {
-        return $this->getConfig()->has($this->getRawId($id));
+        return $this->getConfig()->has($this->getRawId($id)) || isset($this->objects[$id]);
+    }
+
+    /**
+     * for reserving 'container' or 'config'
+     *
+     * @param  string $id
+     * @param  object $object
+     * @return $this
+     */
+    protected function reserveObject(string $id, object $object)
+    {
+        $this->objects[$id] = $object;
+        $this->classMap[\get_class($object)] = $object;
+        return $this;
     }
 
     /**

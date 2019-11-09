@@ -25,7 +25,7 @@ trait ClassmapTrait
      *
      * @var object[]
      */
-    protected $classMaps = [];
+    protected $classMap = [];
 
     /**
      * has service created by its classname/interface name already?
@@ -37,17 +37,17 @@ trait ClassmapTrait
     protected function hasClass(string $className): ?string
     {
         // not a classname
-        if (!class_exists($className)) {
+        if (!\class_exists($className) && !\interface_exists($className)) {
             return NULL;
         }
 
         // exact match found
-        if (isset($this->classMaps[$className])) {
+        if (isset($this->classMap[$className])) {
             return $className;
         }
 
         // try subclass exists or not
-        $classes = array_keys($this->classMaps);
+        $classes = array_keys($this->classMap);
         foreach ($classes as $class) {
             if (is_a($class, $className, TRUE)) {
                 return $class;
@@ -66,7 +66,7 @@ trait ClassmapTrait
     protected function matchClass(string $className): ?object
     {
         if ($class = $this->hasClass($className)) {
-            return $this->classMaps[$class];
+            return $this->classMap[$class];
         }
         return NULL;
     }
@@ -78,6 +78,6 @@ trait ClassmapTrait
      */
     protected function storeClass(object $object): void
     {
-        $this->classMaps[get_class($object)] = $object;
+        $this->classMap[get_class($object)] = $object;
     }
 }

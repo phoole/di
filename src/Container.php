@@ -105,15 +105,15 @@ class Container implements ContainerInterface, ReferenceInterface, ConfigAwareIn
      */
     protected function initContainer(): void
     {
-        // predefine a couple of ids
-        $tree = $this->getConfig()->getTree();
-        $tree->add($this->getRawId('config'), $this->getConfig());
-        $tree->add($this->getRawId('container'), $this->delegator);
+        // reserve some ids
+        $this->reserveObject('config', $this->getConfig());
+        $this->reserveObject('container', $this->delegator);
 
         // resolve all objects defined in di.services
         $this->autoResolve();
 
         // resolve all object referenced in the $config
+        $tree = $this->getConfig()->getTree();
         $settings = &$tree->get('');
         $this->deReference($settings);
     }
@@ -124,7 +124,7 @@ class Container implements ContainerInterface, ReferenceInterface, ConfigAwareIn
     protected function autoResolve(): void
     {
         // get all ids of the defined services
-        $ids = array_keys($this->getConfig()->get($this->prefix . 'service'));
+        $ids = array_keys($this->getConfig()->get($this->prefix . 'service') ?? []);
 
         // resolve in service definition ONLY
         if (!empty($ids)) {
