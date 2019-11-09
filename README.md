@@ -93,7 +93,7 @@ Features
   Characters of `'#', '@'` have special meanings, such that should not be part
   of *normal* service names.
 
-  - <a name="pref"></a>Parameter references `${system.tempdir}`
+  - <a name="pref"></a>Parameter references like `${system.tempdir}`
 
     ```php
     $config = [
@@ -110,7 +110,7 @@ Features
     See [phoole/config reference](https://github.com/phoole/config#ref) for
     detail. Parameter references are read from configuration files or array.
   
-  - <a name="sref"></a>Service references
+  - <a name="sref"></a>Service references like `${#cache}`
 
     Service object reference in the form of `${#serviceId}` can be used to referring
     a service instance in the container.
@@ -242,11 +242,11 @@ Features
 
 - <a name="scope"></a>**Object scope**
 
-  - Shared or single scope
+  - Shared objects and new objects
 
     By default, service instances in the container are shared inside the
     container. If users want different instance each time, they may just
-    add '@' to the service id.
+    append **'@'** to the service id.
 
     ```php
     // cache service by default is in shared scope
@@ -270,7 +270,7 @@ Features
 
   - Object scope
   
-    You may get an instance in your own scope as follows
+    You may get an instance in your **own scope** as follows
 
     ```php
     // no scope
@@ -300,18 +300,20 @@ Features
   
   - Access predefined services statically
   
-    Objects in the container can also be access through a static way. Couple of 
-    names are reserved. e.g. `get` and `has`.
+    Services in the container can also be access through a static way. But `get`
+    and `has` are reserved.
     
     ```php
     // after container initiated
+    $container = new Container(new Config(...));
+    
     // equals to $cache = $container->get('cache')
     $cache = Container::cache();
     
     // if myservice defined and invokable
     $obj = Container::myservice('test');
     ``` 
-  - Initiating object by taking advantage or dependency injection
+  - Initiating object by taking advantage of dependency injection
   
     ```php
     use Phoole\Cache\Cache;
@@ -328,24 +330,26 @@ Features
     }
     
     // $cache will be injected automatically
-    // also 'setLogger' will be executed if defined in '.after' section
     $obj = Container::create(MyClass::class);
+    
+    // also 'setLogger' will be executed if defined in 'di.after' section
+    $logger = $obj->getLogger();
     ```
 
-- <a name="autowiring"></a>**Autowiring** and **Injection**
+- <a name="autowiring"></a>**Autowiring** and **auto injection**
   
-  - Automatically parameter resolving (autowiring)
+  - Parameter autowiring (resolving)
     
     Parameters of a constructor/callable will be resolved by looking
    
     - exists in the classmap (service objects created already) ?
    
-    - classname known to the script (class defined but not in container configs) ?
+    - classname known to the script (class defined already) ?
   
   - Auto injection
   
-    Instead of using 'annotation', we encourage of using `*AwareInterface` for your
-    own classes' dependency injection.
+    Instead of using **'annotation'**, we encourage of using `*AwareInterface`
+    for your own classes' dependency injection.
     
     ```php
     use Psr\Log\LoggerAwareTrait;
@@ -359,6 +363,9 @@ Features
     
     // create your object with arguments
     $obj = Container::create(MyOnwClass::class, [...]);
+    
+    // $logger injected by the container automatically
+    $logger = $obj->getLogger();
     ```
     
     `Container` has all the common injection predefined in the `di.after` section
@@ -374,8 +381,6 @@ Features
             ...
         ],
     ];
-    
-    $container = new Container(new Config());
     ...
     ```
 
