@@ -30,6 +30,7 @@ class Autowiring extends Xclass
 class AutowiringTraitTest extends TestCase
 {
     private $obj;
+
     private $ref;
 
     protected function setUp(): void
@@ -92,7 +93,7 @@ class AutowiringTraitTest extends TestCase
      */
     public function testIsRequiredClass()
     {
-        $func = function(?Autowiring $auto = null, int $i = 1, string $str = 'test') {
+        $func = function(?Autowiring $auto = NULL, int $i = 1, string $str = 'test') {
         };
         $parameters = (new \ReflectionFunction($func))->getParameters();
         $this->assertTrue(3 === count($parameters));
@@ -121,20 +122,20 @@ class AutowiringTraitTest extends TestCase
      */
     public function testMatchArguments()
     {
-        $this->obj->autoLoad = true;
+        $this->obj->autoLoad = TRUE;
 
         // case one
         $func = function(?Autowiring $auto, int $i = 1, string $str = 'test') {
         };
         $parameters = (new \ReflectionFunction($func))->getParameters();
 
-        $res = $this->obj->matchArguments([2,'wow'], $parameters);
-        $this->assertTrue($res[0] instanceof  Autowiring);
+        $res = $this->obj->matchArguments([2, 'wow'], $parameters);
+        $this->assertTrue($res[0] instanceof Autowiring);
         $this->assertTrue(2 === $res[1]);
         $this->assertTrue('wow' === $res[2]);
 
         $res = $this->obj->matchArguments([2], $parameters);
-        $this->assertTrue($res[0] instanceof  Autowiring);
+        $this->assertTrue($res[0] instanceof Autowiring);
         $this->assertTrue(2 === count($res));
 
         // case two
@@ -145,7 +146,7 @@ class AutowiringTraitTest extends TestCase
         $this->assertTrue(0 === count($res));
         $res = $this->obj->matchArguments([new Autowiring(), new Autowiring()], $parameters);
         $this->assertTrue(2 === count($res));
-        $this->assertTrue($res[1] instanceof  Autowiring);
+        $this->assertTrue($res[1] instanceof Autowiring);
 
         // case three
         $func = function($test) {

@@ -19,6 +19,7 @@ class ClassMap2 extends ClassMap
 class ClassmapTraitTest extends TestCase
 {
     private $obj;
+
     private $ref;
 
     protected function setUp(): void

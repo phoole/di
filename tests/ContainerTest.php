@@ -152,30 +152,35 @@ class ContainerTest extends TestCase
 
     /**
      * test di.before & di.after
+     *
      * @covers Phoole\Di\Container::get()
      */
     public function testGet3()
     {
-        $container = new Container(new Config([
-            'di.before' => [
-                function($def) {
-                    echo "CLASS ". $def['class'];
-                },
-                [[new B(), 'bingo'], '_wow'],
-            ],
-            'di.service' => [
-            ],
-            'di.after' => [
-                'setContainer',
-                function($obj) {
-                    echo $obj->bingo;
-                },
-                [[new B(), 'bingo'], 'wow_'],
-            ],
-        ]));
+        $container = new Container(
+            new Config(
+                [
+                    'di.before' => [
+                        function($def) {
+                            echo "CLASS " . $def['class'];
+                        },
+                        [[new B(), 'bingo'], '_wow'],
+                    ],
+                    'di.service' => [
+                    ],
+                    'di.after' => [
+                        'setContainer',
+                        function($obj) {
+                            echo $obj->bingo;
+                        },
+                        [[new B(), 'bingo'], 'wow_'],
+                    ],
+                ]
+            )
+        );
 
         // before
-        $this->expectOutputString("CLASS ".A::class .'_wow_bingo_wow_');
+        $this->expectOutputString("CLASS " . A::class . '_wow_bingo_wow_');
         $a = Container::create(A::class);
         // after
         $this->assertTrue($a->getContainer() instanceof Container);
@@ -186,7 +191,6 @@ class ContainerTest extends TestCase
      */
     public function testCallStatic()
     {
-
         $a = Container::a();
         $this->assertTrue($a instanceof A);
     }
