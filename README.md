@@ -6,8 +6,7 @@
 [![Latest Stable Version](https://img.shields.io/github/v/release/phoole/di)](https://packagist.org/packages/phoole/di)
 [![License](https://img.shields.io/github/license/phoole/di)]()
 
-A slim, powerful and standalone [PSR-11][PSR-11] implementation of dependency injection 
-library for PHP.
+Slim, powerful and full compatible [PSR-11][PSR-11] dependency injection library for PHP.
 
 It builds upon the versatile [phoole/config][config] library and supports
 [object decorating](#decorate), [object scope](#scope) and more. It requires PHP 7.2+. It is
